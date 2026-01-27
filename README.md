@@ -86,7 +86,7 @@ The following features are not yet implemented, but planned for upcoming release
 #### Authentication & Authorization Features 
 1. Auth Middleware to protect API endpoints
 2. JWT Tokens for stateless authentication
-3. OAuth (Google, GitHub) for easy third-party registration/login
+3. OAuth (Google, Facebook, Instagram) for easy third-party registration/login
 
 ### Container Architecture
 

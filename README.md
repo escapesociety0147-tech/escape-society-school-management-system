@@ -43,7 +43,7 @@ Core school management features are planned and listed below.
 
 The following features are not yet implemented, but planned for upcoming releases:
 
-### #Student Management
+#### Student Management
 
 1. Student registration
 

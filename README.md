@@ -83,6 +83,11 @@ The following features are not yet implemented, but planned for upcoming release
 
 3. Outstanding balance tracking
 
+#### Authentication & Authorization Features 
+1. Auth Middleware to protect API endpoints
+2. JWT Tokens for stateless authentication
+3. OAuth (Google, GitHub) for easy third-party registration/login
+
 ### Container Architecture
 
 The application runs using two Docker services:
@@ -104,6 +109,7 @@ The application runs using two Docker services:
 2. Persistent storage using Docker volumes
 
 3. Health check ensures readiness before app starts
+
 
 ### Project Structure
 

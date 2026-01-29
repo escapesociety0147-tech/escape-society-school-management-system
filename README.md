@@ -137,21 +137,11 @@ FORWARDED_PORT=3307
 DB_CONNECTION=mysql
 DB_DRIVER=pymysql
 
-DATABASE_URL=f"${DB_CONNECTION}+${DB_DRIVER}://${DB_PASSWORD}@${DB_HOST}/${DB_DATABASE}"
+DATABASE_URL=mysql+pymysql://password@db/school-management-db
 
 
 ```
-### Makefile Commands
 
-The project includes a Makefile to simplify container management.
-
-```Makefile
-make up         # starts containers
-make up build   # starts containers with rebuild
-make down       # stops containers
-make down-v     # stops containers and removes persisted data
-
-```
 ### Available Endpoints
 ```
 Health / Index Endpoint
@@ -164,6 +154,35 @@ Response:
 }
 
 ```
+
+### How to Run (Tester Instructions)
+1. **Install Docker (if not already installed):**
+   a. Docker Desktop: https://www.docker.com/products/docker-desktop/ (Windows/Mac)
+   b. sudo apt install docker.io docker-compose (Linux)
+2. **Clone the repository:**
+   ```bash
+   git clone <repo-url>
+   cd <repo-folder>
+   ```
+3. Create a .env file with the details in the Environment configuration above and update DB_USER and DB_PASSWORD    if needed.
+4. **Makefile Commands**
+
+  The project includes a Makefile to simplify container management.
+
+  ```Makefile
+  make up         # starts containers
+  make up-build   # starts containers with rebuild
+  make down       # stops containers
+  make down-v     # stops containers and removes persisted data
+  make logs       # shows the output (stdout and stderr) of a running or stopped container
+  make logs-db    # show the output of MYSQL logs
+  make logs-db    # show the output of FastAPI logs
+  make run        # Quick start and watch logst: rebuild, start, and follow FastAPI logs
+  ```
+5. Access the API:
+   Open your browser or use Postman to test:
+   
+   http://localhost:8000/
 
 ### Development Notes
 

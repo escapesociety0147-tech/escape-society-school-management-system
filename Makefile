@@ -1,12 +1,22 @@
+
+WEB_SERVICE=web
+DB_SERVICE=database
+
+
 up:
-	docker-compose up
-
+	sudo docker-compose up -d
 up-build:
-	docker-compose up --build
-
+	sudo docker-compose up --build -d
+logs:
+	sudo docker-compose logs -f
+logs-web:
+	sudo docker-compose logs -f $(WEB_SERVICE)
+logs-db:
+	sudo docker-compose logs -f $(DB_SERVICE)
 down:
-	docker-compose down
-
+	sudo docker-compose down
 down-v:
-	docker-compose down -v
+	sudo docker-compose down -v
 
+# Convenience target: rebuild, start, and follow FastAPI logs
+run: up-build logs-web

@@ -130,14 +130,13 @@ The application runs using two Docker services:
 ```.env
 DB_HOST=db 
 DB_DATABASE=school-management-db
-DB_USER=your_user
+DB_USER=your_username
 DB_PASSWORD=your_secret_password
 MYSQL_PORT=3306
-FORWARDED_PORT=3307
 DB_CONNECTION=mysql
 DB_DRIVER=pymysql
 
-DATABASE_URL=mysql+pymysql://password@db/school-management-db
+DATABASE_URL=mysql+pymysql://your_username:your_secret_password@db:3306/school-management-db
 
 
 ```
@@ -177,7 +176,7 @@ Response:
   make logs       # shows the output (stdout and stderr) of a running or stopped container
   make logs-db    # show the output of MYSQL logs
   make logs-db    # show the output of FastAPI logs
-  make run        # Quick start and watch logst: rebuild, start, and follow FastAPI logs
+  make run        # Quick start and watch logs: rebuild, start, and follow FastAPI logs
   ```
 5. Access the API:
    Open your browser or use Postman to test:

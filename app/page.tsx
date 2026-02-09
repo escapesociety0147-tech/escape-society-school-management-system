@@ -1,7 +1,6 @@
 import LandingNavbar from '@/components/home/layout/Navbar'
 import Hero from '@/components/home/Hero'
 import Features from '@/components/home/Features'
-import DashboardPreview from '@/components/home/DashboardPreview'
 import Testimonials from '@/components/home/Testimonials'
 import Pricing from '@/components/home/Pricing'
 import CTA from '@/components/home/CTA'
@@ -13,7 +12,6 @@ export default function LandingPage() {
       <LandingNavbar />
       <Hero />
       <Features />
-      <DashboardPreview />
       <Testimonials />
       <Pricing />
       <CTA />

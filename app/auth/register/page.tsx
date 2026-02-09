@@ -207,44 +207,6 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* FAQ Section */}
-        <div className="max-w-3xl mx-auto mt-16">
-          <h3 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
-            Frequently Asked Questions
-          </h3>
-          <div className="space-y-4">
-            {[
-              {
-                question: 'Is there a free trial for schools?',
-                answer: 'Yes, schools get a 14-day free trial with full access to all features. No credit card required.',
-              },
-              {
-                question: 'Can teachers join existing school accounts?',
-                answer: 'Yes, teachers can be invited by their school administrators or request to join an existing school.',
-              },
-              {
-                question: 'How secure is my data?',
-                answer: 'We use bank-level encryption, regular security audits, and comply with GDPR and data protection regulations.',
-              },
-              {
-                question: 'Can I upgrade or downgrade my plan?',
-                answer: 'Yes, you can change your plan at any time. Changes take effect at the start of your next billing cycle.',
-              },
-            ].map((faq, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                  {faq.question}
-                </h4>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {faq.answer}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   )

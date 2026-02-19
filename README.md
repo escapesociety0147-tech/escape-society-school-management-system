@@ -6,9 +6,9 @@ A full-stack School Management System built with **FastAPI** (Python) on the bac
 
 ## Project Status
 
-> **Version 2.0 — Active Development**
+> **Version 2.1 — Active Development**
 
-The backend REST API is now fully implemented with 25+ endpoints covering all core school management features. The frontend is connected to the backend via a central API client, with the dashboard live and remaining pages being migrated from localStorage to real database calls.
+The backend REST API is fully implemented with 25+ endpoints. The frontend login and school registration pages are now connected to the backend database. The admin dashboard fetches live stats from the backend. Remaining pages are being migrated from localStorage to real database calls.
 
 ---
 
@@ -48,20 +48,28 @@ The backend REST API is now fully implemented with 25+ endpoints covering all co
 │   ├── validation.py             # Input validation helpers
 │   └── school.db                 # SQLite database (auto-generated)
 ├── escape-society-school-management-system-dev/   # Frontend (Next.js)
-│   ├── app/                      # Next.js pages (file-system routing)
-│   │   ├── dashboard/            # Admin dashboard
-│   │   ├── students/             # Student management
-│   │   ├── teachers/             # Teacher management
-│   │   ├── attendance/           # Attendance tracking
-│   │   ├── results/              # Academic results
-│   │   ├── fees/                 # Fee management
-│   │   ├── events/               # School events
-│   │   ├── teacher/              # Teacher portal pages
-│   │   ├── student/              # Student portal pages
-│   │   └── parent/               # Parent portal pages
+│   ├── app/
+│   │   ├── auth/
+│   │   │   ├── login/page.tsx        # ✅ Connected to backend API
+│   │   │   └── register/
+│   │   │       ├── page.tsx          # Role selection page
+│   │   │       ├── school/page.tsx   # ✅ Connected to backend API
+│   │   │       ├── teacher/page.tsx  # Pending backend connection
+│   │   │       ├── student/page.tsx  # Pending backend connection
+│   │   │       └── parent/page.tsx   # Pending backend connection
+│   │   ├── dashboard/page.tsx        # ✅ Connected to backend API
+│   │   ├── students/                 # Pending backend connection
+│   │   ├── teachers/                 # Pending backend connection
+│   │   ├── attendance/               # Pending backend connection
+│   │   ├── results/                  # Pending backend connection
+│   │   ├── fees/                     # Pending backend connection
+│   │   ├── events/                   # Pending backend connection
+│   │   ├── teacher/                  # Teacher portal pages
+│   │   ├── student/                  # Student portal pages
+│   │   └── parent/                   # Parent portal pages
 │   ├── components/               # Reusable UI components
 │   ├── lib/
-│   │   ├── api.ts                # Central API client (NEW)
+│   │   ├── api.ts                # ✅ Central API client
 │   │   └── ...                   # Data helpers and hooks
 │   └── middleware.ts             # Route protection & role redirects
 ├── docker-compose.yml
@@ -75,8 +83,6 @@ The backend REST API is now fully implemented with 25+ endpoints covering all co
 ---
 
 ## Database Models
-
-The following tables are now implemented in the database:
 
 | Model | Description | Key Fields |
 |---|---|---|
@@ -109,7 +115,7 @@ The following tables are now implemented in the database:
 ### Students
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | /students | List all students (filter by school_id) |
+| GET | /students | List all students |
 | GET | /students/{id} | Get a single student |
 | POST | /students | Register a new student |
 | PUT | /students/{id} | Update student info |
@@ -118,47 +124,23 @@ The following tables are now implemented in the database:
 ### Teachers
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | /teachers | List all teachers (filter by school_id) |
+| GET | /teachers | List all teachers |
 | POST | /teachers | Add a new teacher |
 | PUT | /teachers/{id} | Update teacher info |
 | DELETE | /teachers/{id} | Remove a teacher |
 
-### Parents
+### Other Endpoints
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | /parents | List all parents |
-| POST | /parents | Add a new parent |
-
-### Attendance
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /attendance | List records (filter by student_id) |
-| POST | /attendance | Record a new attendance entry |
-
-### Results
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /results | List results (filter by student_id) |
-| POST | /results | Add a new result |
-
-### Payments
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /payments | List payments (filter by student_id) |
-| POST | /payments | Add a new payment record |
-
-### Events
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | /events | List events (filter by school_id) |
-| POST | /events | Create a new event |
-| DELETE | /events/{id} | Delete an event |
+| GET/POST | /parents | List or add parents |
+| GET/POST | /attendance | List or record attendance |
+| GET/POST | /results | List or add results |
+| GET/POST | /payments | List or add payments |
+| GET/POST/DELETE | /events | Manage school events |
 
 ---
 
 ## Role-Based Access
-
-The frontend middleware enforces role-based routing:
 
 | Role | Dashboard Route | Access |
 |---|---|---|
@@ -192,7 +174,7 @@ NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 
 ---
 
-## How to Run (Local Development — No Docker)
+## How to Run (Local Development)
 
 ### Backend
 ```bash
@@ -200,8 +182,8 @@ cd app
 pip install fastapi uvicorn sqlalchemy pymysql
 uvicorn main:app --reload
 ```
-Backend runs at: **http://127.0.0.1:8000**
-Interactive API docs at: **http://127.0.0.1:8000/docs**
+- Backend: **http://127.0.0.1:8000**
+- API docs: **http://127.0.0.1:8000/docs**
 
 ### Frontend
 ```bash
@@ -209,7 +191,7 @@ cd escape-society-school-management-system-dev
 npm install
 npm run dev
 ```
-Frontend runs at: **http://localhost:3000**
+- Frontend: **http://localhost:3000**
 
 ---
 
@@ -244,6 +226,8 @@ make run        # Rebuild, start, and follow FastAPI logs
 - [x] Role-based dashboards (Admin, Teacher, Student, Parent)
 - [x] Route protection middleware
 - [x] Central API client (lib/api.ts)
+- [x] Login page connected to backend database
+- [x] School registration page connected to backend database
 - [x] Admin dashboard connected to live backend stats
 - [x] Cookie-based session management
 - [x] Dark/light mode support
@@ -252,10 +236,10 @@ make run        # Rebuild, start, and follow FastAPI logs
 
 ---
 
-## Planned / In Progress
+## Pending / In Progress
 
-- [ ] Connect all remaining frontend pages to backend API
-- [ ] Update auth pages to use backend (replace localStorage auth)
+- [ ] Connect teacher, student, parent registration pages to backend
+- [ ] Connect students, teachers, attendance, fees, results pages to backend
 - [ ] JWT token authentication middleware
 - [ ] OAuth (Google, Facebook) login
 - [ ] Replace SQLite with MySQL for production
@@ -268,21 +252,35 @@ make run        # Rebuild, start, and follow FastAPI logs
 
 ---
 
+## Checking the Database
+
+### Via API docs
+Visit **http://127.0.0.1:8000/docs** and use Try it out on any endpoint.
+
+### Via terminal
+```bash
+cd app
+python -c "from database import SessionLocal; from models import User; db = SessionLocal(); users = db.query(User).all(); [print(f'ID:{u.id} | {u.name} | {u.email} | {u.role}') for u in users]; db.close()"
+```
+
+---
+
 ## Production Considerations
 
-1. Replace SQLite with MySQL using the docker-compose.yml configuration
+1. Replace SQLite with MySQL using docker-compose.yml
 2. Remove Docker bind mounts
-3. Disable auto-reload (`--reload` flag)
+3. Disable auto-reload
 4. Use multiple Uvicorn workers
 5. Secure all environment variables
 6. Use Alembic for database migrations
 7. Add rate limiting to API endpoints
+8. Upgrade password hashing to bcrypt
 
 ---
 
 ## Contributing
 
-Contributions, suggestions, and improvements are welcome. Please create a feature branch and open a Pull Request against `main` for review before merging.
+Please create a feature branch and open a Pull Request against `main` for review before merging.
 
 ---
 

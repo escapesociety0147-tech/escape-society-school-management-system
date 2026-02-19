@@ -1,229 +1,291 @@
-## School Management System (FastAPI + Docker)
+# School Management System (FastAPI + Next.js)
 
-A backend School Management System built with FastAPI and MySQL, fully containerized using Docker and managed via Docker Compose and Makefile for simplified development and deployment workflows.
+A full-stack School Management System built with **FastAPI** (Python) on the backend and **Next.js** (TypeScript) on the frontend, backed by a **SQLite** database (dev) with a planned migration to **MySQL** for production. The backend is fully containerized using Docker and managed via Docker Compose and Makefile.
 
-### Project Status:
-This project is currently in early development.
-Only the base application and index endpoint are active.
-Core school management features are planned and listed below.
+---
 
-### Tech Stack
+## Project Status
 
-1. Backend: FastAPI (Python)
+> **Version 2.0 — Active Development**
 
-2. Database: MySQL 8.4
+The backend REST API is now fully implemented with 25+ endpoints covering all core school management features. The frontend is connected to the backend via a central API client, with the dashboard live and remaining pages being migrated from localStorage to real database calls.
 
-3. ORM: SQLAlchemy (planned)
+---
 
-4. Containerization: Docker & Docker Compose
+## Tech Stack
 
-5. Process Management: Uvicorn
+### Backend
+| Technology | Purpose |
+|---|---|
+| FastAPI (Python) | REST API framework |
+| SQLAlchemy | ORM for database models |
+| Pydantic | Request/response validation schemas |
+| SQLite | Development database (auto-created) |
+| MySQL 8.4 | Production database (via Docker) |
+| Uvicorn | ASGI server |
+| Docker & Docker Compose | Containerization |
+| Makefile | Dev workflow automation |
 
-6. Automation: Makefile
+### Frontend
+| Technology | Purpose |
+|---|---|
+| Next.js 16 (TypeScript) | React-based frontend framework |
+| Tailwind CSS | Utility-first styling |
+| Recharts | Data visualization / charts |
+| Lucide React | Icon library |
 
-7. Environment Config: .env file
+---
 
-#### Project Features (Current)
-
-##### Implemented
-
-1. Dockerized FastAPI application
-
-2. MySQL database container with persistent volume
-
-3. Health checks for database readiness
-
-3. Environment-based configuration
-
-4. Makefile commands for container lifecycle
-
-5. Index (/) endpoint for service availability check
-
-### Planned Features (In Progress / Roadmap)
-
-The following features are not yet implemented, but planned for upcoming releases:
-
-#### Student Management
-
-1. Student registration
-
-2. Student profile management
-
-3. Class and grade assignment
-
-#### Teacher Management
-
-1. Teacher profiles
-
-2. Subject assignments
-
-3. Class allocations
-
-#### Attendance Management
-
-1. Student attendance tracking
-
-2. Daily and term-based attendance records
-
-3. Attendance reports
-
-#### Examination & Results
-
-1. Exam creation
-
-2. Student exam results
-
-3. Performance summaries
-
-#### Fees Management
-
-1. Fees structure configuration
-
-2. Payment records
-
-3. Outstanding balance tracking
-
-#### Authentication & Authorization Features 
-1. Auth Middleware to protect API endpoints
-2. JWT Tokens for stateless authentication
-3. OAuth (Google, Facebook, Instagram) for easy third-party registration/login
-
-### Container Architecture
-
-The application runs using two Docker services:
-
-#### Web Service (FastAPI)
-
-1. Runs the FastAPI application
-
-2. Exposed on port 8000
-
-3. Uses bind mount for live code updates (development)
-
-4. Depends on database health check before startup
-
-#### Database Service (MySQL)
-
-1. MySQL 8.4 official image
-
-2. Persistent storage using Docker volumes
-
-3. Health check ensures readiness before app starts
-
-
-### Project Structure
+## Project Structure
 
 ```bash
 .
-├── app/
-│   ├── main.py
-│   └── ...
+├── app/                          # Backend (FastAPI)
+│   ├── main.py                   # All API routes and app setup
+│   ├── models.py                 # SQLAlchemy database models
+│   ├── schemas.py                # Pydantic validation schemas
+│   ├── database.py               # Database connection and session
+│   ├── validation.py             # Input validation helpers
+│   └── school.db                 # SQLite database (auto-generated)
+├── escape-society-school-management-system-dev/   # Frontend (Next.js)
+│   ├── app/                      # Next.js pages (file-system routing)
+│   │   ├── dashboard/            # Admin dashboard
+│   │   ├── students/             # Student management
+│   │   ├── teachers/             # Teacher management
+│   │   ├── attendance/           # Attendance tracking
+│   │   ├── results/              # Academic results
+│   │   ├── fees/                 # Fee management
+│   │   ├── events/               # School events
+│   │   ├── teacher/              # Teacher portal pages
+│   │   ├── student/              # Student portal pages
+│   │   └── parent/               # Parent portal pages
+│   ├── components/               # Reusable UI components
+│   ├── lib/
+│   │   ├── api.ts                # Central API client (NEW)
+│   │   └── ...                   # Data helpers and hooks
+│   └── middleware.ts             # Route protection & role redirects
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
 ├── Makefile
 ├── .env
 └── README.md
-
 ```
-### Environment Configuration
-```.env
-DB_HOST=db 
+
+---
+
+## Database Models
+
+The following tables are now implemented in the database:
+
+| Model | Description | Key Fields |
+|---|---|---|
+| User | All user accounts | id, name, email, password, role, school_id |
+| Student | Student records | id, student_id, name, email, grade, section, roll_number |
+| Teacher | Staff records | id, emp_id, name, email, department, subjects |
+| Parent | Parent/guardian records | id, parent_id, name, email, relationship |
+| Attendance | Daily attendance | id, student_id, date, status (present/absent/late) |
+| Result | Academic results | id, student_id, subject, score, grade, term |
+| Payment | Fee records | id, student_id, amount_due, amount_paid, status |
+| Event | School events | id, title, date, location, category |
+| Notification | User notifications | id, user_id, title, message, read |
+
+---
+
+## API Endpoints
+
+### Auth
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | /auth/register | Register a new user (any role) |
+| POST | /auth/login | Authenticate and receive session token |
+
+### Dashboard
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | / | API health check |
+| GET | /stats | Live stats: students, teachers, attendance rate, revenue |
+
+### Students
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /students | List all students (filter by school_id) |
+| GET | /students/{id} | Get a single student |
+| POST | /students | Register a new student |
+| PUT | /students/{id} | Update student info |
+| DELETE | /students/{id} | Remove a student |
+
+### Teachers
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /teachers | List all teachers (filter by school_id) |
+| POST | /teachers | Add a new teacher |
+| PUT | /teachers/{id} | Update teacher info |
+| DELETE | /teachers/{id} | Remove a teacher |
+
+### Parents
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /parents | List all parents |
+| POST | /parents | Add a new parent |
+
+### Attendance
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /attendance | List records (filter by student_id) |
+| POST | /attendance | Record a new attendance entry |
+
+### Results
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /results | List results (filter by student_id) |
+| POST | /results | Add a new result |
+
+### Payments
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /payments | List payments (filter by student_id) |
+| POST | /payments | Add a new payment record |
+
+### Events
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | /events | List events (filter by school_id) |
+| POST | /events | Create a new event |
+| DELETE | /events/{id} | Delete an event |
+
+---
+
+## Role-Based Access
+
+The frontend middleware enforces role-based routing:
+
+| Role | Dashboard Route | Access |
+|---|---|---|
+| admin | /dashboard | Full admin access |
+| teacher | /teacher/dashboard | Teacher portal only |
+| student | /student/dashboard | Student portal only |
+| parent | /parent/dashboard | Parent portal only |
+
+---
+
+## Environment Configuration
+
+Create a `.env` file in the project root:
+
+```env
+DB_HOST=db
 DB_DATABASE=school-management-db
 DB_USER=your_username
 DB_PASSWORD=your_secret_password
 MYSQL_PORT=3306
 DB_CONNECTION=mysql
 DB_DRIVER=pymysql
-
 DATABASE_URL=mysql+pymysql://your_username:your_secret_password@db:3306/school-management-db
-
-
 ```
 
-### Available Endpoints
-```
-Health / Index Endpoint
-GET /
+Create a `.env.local` file in the frontend folder:
 
-Response:
-
-{
-  "message": "School Management System API is running"
-}
-
+```env
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 ```
 
-### How to Run (Tester Instructions)
-1. **Install Docker (if not already installed):**
-   a. Docker Desktop: https://www.docker.com/products/docker-desktop/ (Windows/Mac)
-   b. sudo apt install docker.io docker-compose (Linux)
-2. **Clone the repository:**
-   ```bash
-   git clone <repo-url>
-   cd <repo-folder>
-   ```
-3. Create a .env file with the details in the Environment configuration above and update DB_USER and DB_PASSWORD    if needed.
-4. **Makefile Commands**
+---
 
-  The project includes a Makefile to simplify container management.
+## How to Run (Local Development — No Docker)
 
-  ```Makefile
-  make up         # starts containers
-  make up-build   # starts containers with rebuild
-  make down       # stops containers
-  make down-v     # stops containers and removes persisted data
-  make logs       # shows the output (stdout and stderr) of a running or stopped container
-  make logs-db    # show the output of MYSQL logs
-  make logs-db    # show the output of FastAPI logs
-  make run        # Quick start and watch logs: rebuild, start, and follow FastAPI logs
-  ```
-5. Access the API:
-   Open your browser or use Postman to test:
-   
-   http://localhost:8000/
+### Backend
+```bash
+cd app
+pip install fastapi uvicorn sqlalchemy pymysql
+uvicorn main:app --reload
+```
+Backend runs at: **http://127.0.0.1:8000**
+Interactive API docs at: **http://127.0.0.1:8000/docs**
 
-### Development Notes
+### Frontend
+```bash
+cd escape-society-school-management-system-dev
+npm install
+npm run dev
+```
+Frontend runs at: **http://localhost:3000**
 
-1. Code changes are reflected instantly using Docker bind mounts
+---
 
-2. Database readiness is handled via Docker health checks
+## How to Run (Docker)
 
-3. The project follows production-ready container patterns, even at early stages
+```bash
+make up         # Start all containers
+make up-build   # Start with rebuild
+make down       # Stop containers
+make down-v     # Stop and remove persisted data
+make logs       # View all logs
+make logs-db    # View MySQL logs
+make run        # Rebuild, start, and follow FastAPI logs
+```
 
-4. Future features will be added incrementally with proper migrations
+---
 
-### Production Considerations
+## Implemented Features
 
-For production deployment:
+### Backend
+- [x] Full REST API with 25+ endpoints
+- [x] SQLAlchemy ORM with 9 database models
+- [x] Pydantic request/response validation
+- [x] Password hashing (SHA-256)
+- [x] CORS middleware for frontend connectivity
+- [x] Auto-generated unique IDs (STU-XXXX, EMP-XXXX, PAR-XXXX)
+- [x] SQLite database (auto-created on first run)
+- [x] Docker + Docker Compose setup
+- [x] Makefile workflow automation
 
-1. Remove bind mounts
+### Frontend
+- [x] Role-based dashboards (Admin, Teacher, Student, Parent)
+- [x] Route protection middleware
+- [x] Central API client (lib/api.ts)
+- [x] Admin dashboard connected to live backend stats
+- [x] Cookie-based session management
+- [x] Dark/light mode support
+- [x] Recharts data visualizations
+- [x] Toast notification system
 
-2. Disable auto-reload
+---
 
-3. Use multiple Uvicorn workers
+## Planned / In Progress
 
-4. Secure environment variables
+- [ ] Connect all remaining frontend pages to backend API
+- [ ] Update auth pages to use backend (replace localStorage auth)
+- [ ] JWT token authentication middleware
+- [ ] OAuth (Google, Facebook) login
+- [ ] Replace SQLite with MySQL for production
+- [ ] Database migrations with Alembic
+- [ ] Pagination for list endpoints
+- [ ] Real-time messaging with WebSockets
+- [ ] File upload for documents section
+- [ ] Upgrade password hashing to bcrypt
+- [ ] Unit tests with pytest
 
-5. Use migrations (Alembic)
+---
 
-### Project Goals
+## Production Considerations
 
-This project aims to:
+1. Replace SQLite with MySQL using the docker-compose.yml configuration
+2. Remove Docker bind mounts
+3. Disable auto-reload (`--reload` flag)
+4. Use multiple Uvicorn workers
+5. Secure all environment variables
+6. Use Alembic for database migrations
+7. Add rate limiting to API endpoints
 
-1. Demonstrate clean backend architecture
+---
 
-2. Follow real world containerization best practices
+## Contributing
 
-3. Provide a scalable foundation for a full school management system
+Contributions, suggestions, and improvements are welcome. Please create a feature branch and open a Pull Request against `main` for review before merging.
 
-### Contributing
+---
 
-Contributions, suggestions, and improvements are welcome.
-This project is under active development.
+## License
 
-### License
-
-This project is for educational and development purposes.
-License details to be added.
-
+This project is for educational and development purposes. License details to be added.

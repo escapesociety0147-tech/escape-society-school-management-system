@@ -1,0 +1,285 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --primary: 180 100% 25%; /* Teal base */
+    --primary-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 180 80% 40%; /* Brighter teal for dark mode */
+    --primary-foreground: 0 0% 100%;
+  }
+
+  /* Thin scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 dark:bg-slate-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-teal-400/50 hover:bg-teal-500/70 dark:bg-teal-500/40 dark:hover:bg-teal-400/60 
+           rounded-full transition-colors duration-200;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-teal-500 dark:bg-teal-400;
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(45, 212, 191, 0.5) rgba(241, 245, 249, 1);
+  }
+
+  .dark * {
+    scrollbar-color: rgba(45, 212, 191, 0.4) rgba(15, 23, 42, 1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-slate-200 dark:border-slate-700;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar classes for specific elements */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-teal-400/30 hover:bg-teal-500/50 dark:bg-teal-500/20 dark:hover:bg-teal-400/30 
+           rounded-full transition-colors duration-200;
+  }
+
+  .scrollbar-thin-teal {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin-teal::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .scrollbar-thin-teal::-webkit-scrollbar-track {
+    @apply bg-teal-50/20 dark:bg-teal-900/5 rounded-full;
+  }
+
+  .scrollbar-thin-teal::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-teal-400 to-teal-500 
+           hover:from-teal-500 hover:to-teal-600
+           dark:from-teal-500 dark:to-teal-600
+           dark:hover:from-teal-400 dark:hover:to-teal-500
+           rounded-full transition-all duration-200;
+  }
+
+  /* Elegant scrollbar for sidebar and modals */
+  .scrollbar-elegant {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-elegant::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-elegant::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-elegant::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-teal-300 via-teal-400 to-teal-300
+           dark:from-teal-500 dark:via-teal-600 dark:to-teal-500
+           rounded-full opacity-50 hover:opacity-100
+           transition-opacity duration-200;
+  }
+
+  /* Invisible scrollbar that appears on hover */
+  .scrollbar-hover {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hover::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-hover::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-hover::-webkit-scrollbar-thumb {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-hover:hover::-webkit-scrollbar-thumb {
+    @apply bg-teal-400/40 hover:bg-teal-500/60 
+           dark:bg-teal-500/30 dark:hover:bg-teal-400/40
+           rounded-full transition-colors duration-300;
+  }
+
+  /* Card styles with scrollbar */
+  .card {
+    @apply bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6;
+  }
+
+  /* Table container with custom scrollbar */
+  .table-container {
+    @apply overflow-auto scrollbar-thin-teal rounded-lg border border-slate-200 dark:border-slate-700;
+  }
+
+  .btn-primary {
+    @apply bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg px-4 py-2 transition-colors focus:ring-2 focus:ring-teal-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium rounded-lg px-4 py-2 transition-colors;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent;
+  }
+
+  .table-header {
+    @apply px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50;
+  }
+
+  .table-cell {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100;
+  }
+
+  /* Sidebar with custom scrollbar */
+  .sidebar {
+    @apply bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 
+           overflow-y-auto scrollbar-elegant;
+  }
+
+  /* Nav items */
+  .nav-item {
+    @apply flex items-center px-4 py-3 text-slate-700 dark:text-slate-300 hover:bg-teal-50 dark:hover:bg-teal-900/20 hover:text-teal-700 dark:hover:text-teal-400 rounded-lg transition-colors;
+  }
+
+  .nav-item.active {
+    @apply bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400;
+  }
+
+  /* Status badges */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-present {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300;
+  }
+
+  .status-absent {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
+  }
+
+  .status-paid {
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300;
+  }
+
+  .status-pending {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300;
+  }
+
+  .status-overdue {
+    @apply bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300;
+  }
+
+  /* Grades */
+  .grade-excellent {
+    @apply text-emerald-600 dark:text-emerald-400 font-semibold;
+  }
+
+  .grade-good {
+    @apply text-teal-600 dark:text-teal-400;
+  }
+
+  .grade-average {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+
+  /* Dashboard card */
+  .dashboard-card {
+    @apply card hover:shadow-md transition-shadow duration-200;
+  }
+
+  /* Modal with scrollable content */
+  .modal-content {
+    @apply max-h-[80vh] overflow-y-auto scrollbar-thin-teal;
+  }
+
+  /* Chat/Message container */
+  .chat-container {
+    @apply h-[500px] overflow-y-auto scrollbar-hover p-4 space-y-4;
+  }
+
+  /* Stats/Graphs container */
+  .stats-container {
+    @apply overflow-x-auto scrollbar-thin-teal pb-2;
+  }
+
+  /* Form container */
+  .form-container {
+    @apply max-h-[70vh] overflow-y-auto scrollbar-thin pr-2;
+  }
+}
+
+/* Animation for scrollbar appearance */
+@layer utilities {
+  .scrollbar-glow {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-glow::-webkit-scrollbar-thumb {
+    @apply shadow-[0_0_6px_rgba(45,212,191,0.3)] dark:shadow-[0_0_6px_rgba(45,212,191,0.5)];
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hidden {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;      /* Firefox */
+  }
+  
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Custom scrollbar animation */
+  @keyframes scrollbar-pulse {
+    0%, 100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .scrollbar-animate::-webkit-scrollbar-thumb {
+    animation: scrollbar-pulse 2s ease-in-out infinite;
+  }
+}

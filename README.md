@@ -1,14 +1,14 @@
 # School Management System (FastAPI + Next.js)
 
-A full-stack School Management System built with **FastAPI** (Python) on the backend and **Next.js** (TypeScript) on the frontend, backed by a **SQLite** database (dev) with a planned migration to **MySQL/PostgreSQL** for production.
+A full-stack School Management System built with **FastAPI** (Python) on the backend and **Next.js** (TypeScript) on the frontend, backed by a **SQLite** database (dev) with a planned migration to **MySQL** for production. The backend is fully containerized using Docker and managed via Docker Compose and Makefile.
 
 ---
 
 ## Project Status
 
-> **Version 3.0 — Active Development**
+> **Version 2.1 — Active Development**
 
-The backend is now fully modular with JWT authentication protecting all endpoints. Role-based access control is implemented. The frontend login and school registration pages are connected to the backend database. The admin dashboard fetches live stats from the API.
+The backend REST API is fully implemented with 25+ endpoints. The frontend login and school registration pages are now connected to the backend database. The admin dashboard fetches live stats from the backend. Remaining pages are being migrated from localStorage to real database calls.
 
 ---
 
@@ -20,7 +20,6 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 | FastAPI (Python) | REST API framework |
 | SQLAlchemy | ORM for database models |
 | Pydantic | Request/response validation schemas |
-| JWT (HMAC-SHA256) | Stateless authentication tokens |
 | SQLite | Development database (auto-created) |
 | MySQL 8.4 | Production database (via Docker) |
 | Uvicorn | ASGI server |
@@ -41,20 +40,13 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 
 ```bash
 .
-├── app/                              # Backend (FastAPI)
-│   ├── main.py                       # FastAPI setup + router registration (40 lines)
-│   ├── security.py                   # JWT creation, verification, auth dependencies
-│   ├── database.py                   # SQLAlchemy database connection and session
-│   ├── models.py                     # All SQLAlchemy database models
-│   ├── schemas.py                    # Pydantic validation schemas
-│   ├── validation.py                 # Input validation helpers
-│   ├── school.db                     # SQLite database (auto-generated)
-│   └── routers/
-│       ├── __init__.py
-│       ├── auth.py                   # Register, login, /me endpoint
-│       ├── students.py               # Student CRUD
-│       ├── teachers.py               # Teacher CRUD
-│       └── other.py                  # Parents, attendance, results, payments, events, stats
+├── app/                          # Backend (FastAPI)
+│   ├── main.py                   # All API routes and app setup
+│   ├── models.py                 # SQLAlchemy database models
+│   ├── schemas.py                # Pydantic validation schemas
+│   ├── database.py               # Database connection and session
+│   ├── validation.py             # Input validation helpers
+│   └── school.db                 # SQLite database (auto-generated)
 ├── escape-society-school-management-system-dev/   # Frontend (Next.js)
 │   ├── app/
 │   │   ├── auth/
@@ -71,12 +63,15 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 │   │   ├── attendance/               # Pending backend connection
 │   │   ├── results/                  # Pending backend connection
 │   │   ├── fees/                     # Pending backend connection
-│   │   └── events/                   # Pending backend connection
-│   ├── components/                   # Reusable UI components
+│   │   ├── events/                   # Pending backend connection
+│   │   ├── teacher/                  # Teacher portal pages
+│   │   ├── student/                  # Student portal pages
+│   │   └── parent/                   # Parent portal pages
+│   ├── components/               # Reusable UI components
 │   ├── lib/
-│   │   ├── api.ts                    # ✅ Central API client
-│   │   └── ...                       # Data helpers and hooks
-│   └── middleware.ts                 # Route protection & role redirects
+│   │   ├── api.ts                # ✅ Central API client
+│   │   └── ...                   # Data helpers and hooks
+│   └── middleware.ts             # Route protection & role redirects
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -84,32 +79,6 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 ├── .env
 └── README.md
 ```
-
----
-
-## Authentication & Security
-
-### JWT Tokens
-- All tokens are signed using **HMAC-SHA256**
-- Tokens expire after **24 hours**
-- Token payload contains: `user_id`, `role`, `email`, `issued_at`, `expires_at`
-- Implemented without third-party libraries using Python's built-in `hmac` and `hashlib`
-
-### Role-Based Access Control
-| Role | Permissions |
-|---|---|
-| **admin** | Full access — read, create, update, delete all resources |
-| **teacher** | Read access to students, attendance, results |
-| **student** | Read access to own records only |
-| **parent** | Read access to linked children's records |
-
-### Endpoint Protection
-| Endpoint Type | Access |
-|---|---|
-| `POST /auth/register` | Public |
-| `POST /auth/login` | Public |
-| `GET` endpoints | Any authenticated user |
-| `POST /PUT /DELETE` endpoints | Admin only |
 
 ---
 
@@ -131,37 +100,36 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 
 ## API Endpoints
 
-### Authentication (Public)
+### Auth
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | /auth/register | Register a new user |
-| POST | /auth/login | Login and receive JWT token |
-| GET | /auth/me | Get current user profile (protected) |
+| POST | /auth/register | Register a new user (any role) |
+| POST | /auth/login | Authenticate and receive session token |
 
-### Dashboard (Protected)
+### Dashboard
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | / | API health check |
-| GET | /stats | Live stats: students, teachers, attendance, revenue |
+| GET | /stats | Live stats: students, teachers, attendance rate, revenue |
 
-### Students (Protected)
-| Method | Endpoint | Access |
+### Students
+| Method | Endpoint | Description |
 |---|---|---|
-| GET | /students | Any authenticated user |
-| GET | /students/{id} | Any authenticated user |
-| POST | /students | Admin only |
-| PUT | /students/{id} | Admin only |
-| DELETE | /students/{id} | Admin only |
+| GET | /students | List all students |
+| GET | /students/{id} | Get a single student |
+| POST | /students | Register a new student |
+| PUT | /students/{id} | Update student info |
+| DELETE | /students/{id} | Remove a student |
 
-### Teachers (Protected)
-| Method | Endpoint | Access |
+### Teachers
+| Method | Endpoint | Description |
 |---|---|---|
-| GET | /teachers | Any authenticated user |
-| POST | /teachers | Admin only |
-| PUT | /teachers/{id} | Admin only |
-| DELETE | /teachers/{id} | Admin only |
+| GET | /teachers | List all teachers |
+| POST | /teachers | Add a new teacher |
+| PUT | /teachers/{id} | Update teacher info |
+| DELETE | /teachers/{id} | Remove a teacher |
 
-### Other Endpoints (Protected)
+### Other Endpoints
 | Method | Endpoint | Description |
 |---|---|---|
 | GET/POST | /parents | List or add parents |
@@ -169,6 +137,17 @@ The backend is now fully modular with JWT authentication protecting all endpoint
 | GET/POST | /results | List or add results |
 | GET/POST | /payments | List or add payments |
 | GET/POST/DELETE | /events | Manage school events |
+
+---
+
+## Role-Based Access
+
+| Role | Dashboard Route | Access |
+|---|---|---|
+| admin | /dashboard | Full admin access |
+| teacher | /teacher/dashboard | Teacher portal only |
+| student | /student/dashboard | Student portal only |
+| parent | /parent/dashboard | Parent portal only |
 
 ---
 
@@ -230,53 +209,13 @@ make run        # Rebuild, start, and follow FastAPI logs
 
 ---
 
-## How to Test the API
-
-### 1. Register an admin account
-```json
-POST /auth/register
-{
-  "name": "Your Name",
-  "email": "admin@school.com",
-  "password": "yourpassword",
-  "role": "admin"
-}
-```
-
-### 2. Login and copy the token
-```json
-POST /auth/login
-{
-  "email": "admin@school.com",
-  "password": "yourpassword"
-}
-```
-
-### 3. Authorize in the docs
-Go to **http://127.0.0.1:8000/docs** → click **Authorize 🔒** → paste the token → click **Authorize**
-
-### 4. Test any protected endpoint
-All endpoints will now return data instead of `401 Unauthorized`
-
-### Check database contents
-```bash
-cd app
-python -c "from database import SessionLocal; from models import User; db = SessionLocal(); users = db.query(User).all(); [print(f'ID:{u.id} | {u.name} | {u.email} | {u.role}') for u in users]; db.close()"
-```
-
----
-
 ## Implemented Features
 
 ### Backend
 - [x] Full REST API with 25+ endpoints
-- [x] JWT authentication (HMAC-SHA256, 24hr expiry)
-- [x] Role-based access control (admin, teacher, student, parent)
-- [x] All endpoints protected — public access blocked
-- [x] Modular router structure (routers/ folder)
 - [x] SQLAlchemy ORM with 9 database models
 - [x] Pydantic request/response validation
-- [x] Password hashing with salt
+- [x] Password hashing (SHA-256)
 - [x] CORS middleware for frontend connectivity
 - [x] Auto-generated unique IDs (STU-XXXX, EMP-XXXX, PAR-XXXX)
 - [x] SQLite database (auto-created on first run)
@@ -299,27 +238,40 @@ python -c "from database import SessionLocal; from models import User; db = Sess
 
 ## Pending / In Progress
 
-- [ ] Update frontend API client to send JWT token in request headers
 - [ ] Connect teacher, student, parent registration pages to backend
 - [ ] Connect students, teachers, attendance, fees, results pages to backend
-- [ ] JWT token refresh mechanism
+- [ ] JWT token authentication middleware
 - [ ] OAuth (Google, Facebook) login
-- [ ] Replace SQLite with MySQL/PostgreSQL for production
+- [ ] Replace SQLite with MySQL for production
 - [ ] Database migrations with Alembic
 - [ ] Pagination for list endpoints
 - [ ] Real-time messaging with WebSockets
 - [ ] File upload for documents section
+- [ ] Upgrade password hashing to bcrypt
 - [ ] Unit tests with pytest
+
+---
+
+## Checking the Database
+
+### Via API docs
+Visit **http://127.0.0.1:8000/docs** and use Try it out on any endpoint.
+
+### Via terminal
+```bash
+cd app
+python -c "from database import SessionLocal; from models import User; db = SessionLocal(); users = db.query(User).all(); [print(f'ID:{u.id} | {u.name} | {u.email} | {u.role}') for u in users]; db.close()"
+```
 
 ---
 
 ## Production Considerations
 
-1. Replace SQLite with MySQL or PostgreSQL
-2. Move `SECRET_KEY` in `security.py` to environment variable
-3. Remove Docker bind mounts
-4. Disable auto-reload
-5. Use multiple Uvicorn workers
+1. Replace SQLite with MySQL using docker-compose.yml
+2. Remove Docker bind mounts
+3. Disable auto-reload
+4. Use multiple Uvicorn workers
+5. Secure all environment variables
 6. Use Alembic for database migrations
 7. Add rate limiting to API endpoints
 8. Upgrade password hashing to bcrypt

@@ -28,6 +28,14 @@ class Student(Base):
     grade = Column(String)
     section = Column(String)
     school_id = Column(String)
+
+    # Links to the student's own User account
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Links to the parent's User account
+    parent_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # Links to the assigned teacher's User account
+    teacher_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
 
     attendance = relationship("Attendance", back_populates="student")
@@ -44,8 +52,12 @@ class Teacher(Base):
     email = Column(String, unique=True, index=True)
     phone = Column(String)
     department = Column(String)
-    subjects = Column(String)  # comma-separated
+    subjects = Column(String)
     school_id = Column(String)
+
+    # Links to the teacher's own User account
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -59,6 +71,10 @@ class Parent(Base):
     phone = Column(String)
     relationship = Column(String, default="Parent")
     school_id = Column(String)
+
+    # Links to the parent's own User account
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -67,7 +83,7 @@ class Attendance(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
-    date = Column(String, nullable=False)  # ISO format YYYY-MM-DD
+    date = Column(String, nullable=False)
     status = Column(String, nullable=False)  # present, absent, late
     created_at = Column(DateTime, server_default=func.now())
 
@@ -95,9 +111,9 @@ class Payment(Base):
     student_id = Column(Integer, ForeignKey("students.id"))
     amount_due = Column(Float)
     amount_paid = Column(Float, default=0)
-    status = Column(String, default="pending")  # paid, pending, overdue
+    status = Column(String, default="pending")
     fee_type = Column(String)
-    last_payment = Column(String)  # ISO date
+    last_payment = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 
     student = relationship("Student", back_populates="payments")

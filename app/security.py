@@ -1,9 +1,10 @@
-import hmac
+﻿import hmac
 import hashlib
 import base64
 import json
 import time
 import uuid
+import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -18,15 +19,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 security = HTTPBearer()
 
 
-# ── Password Hashing ──────────────────────────────────────────────────────────
+# ── Password Hashing (bcrypt) ─────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
-    salt = "esm_salt_escape_society"
-    return hashlib.sha256(f"{salt}{password}{salt}".encode()).hexdigest()
-
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode(), salt).decode()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return hash_password(plain_password) == hashed_password
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
 # ── JWT Implementation ────────────────────────────────────────────────────────
@@ -34,11 +34,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def _b64encode(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
-
 def _b64decode(data: str) -> bytes:
     padding = 4 - len(data) % 4
     return base64.urlsafe_b64decode(data + "=" * padding)
-
 
 def create_access_token(data: dict, expires_minutes: int = ACCESS_TOKEN_EXPIRE_MINUTES) -> str:
     header = _b64encode(json.dumps({"alg": ALGORITHM, "typ": "JWT"}).encode())
@@ -47,7 +45,6 @@ def create_access_token(data: dict, expires_minutes: int = ACCESS_TOKEN_EXPIRE_M
     signature_input = f"{header}.{payload_encoded}".encode()
     signature = _b64encode(hmac.new(SECRET_KEY.encode(), signature_input, hashlib.sha256).digest())
     return f"{header}.{payload_encoded}.{signature}"
-
 
 def decode_token(token: str) -> dict:
     try:
@@ -85,24 +82,20 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
     return user
 
-
 def require_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
-
 
 def require_teacher_or_admin(current_user: models.User = Depends(get_current_user)) -> models.User:
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Teacher or admin access required")
     return current_user
 
-
 def require_parent(current_user: models.User = Depends(get_current_user)) -> models.User:
     if current_user.role != "parent":
         raise HTTPException(status_code=403, detail="Parent access required")
     return current_user
-
 
 def require_student(current_user: models.User = Depends(get_current_user)) -> models.User:
     if current_user.role != "student":

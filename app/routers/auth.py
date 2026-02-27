@@ -3,11 +3,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database import get_db
-from security import hash_password, verify_password, create_access_token, get_current_user
+from security import hash_password, verify_password, create_access_token, get_current_user, generate_id
 import models
 import schemas
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+def generate_school_id() -> str:
+    import uuid
+    return f"SCH-{str(uuid.uuid4())[:8].upper()}"
 
 
 @router.post("/register", response_model=schemas.UserResponse, status_code=201)
@@ -18,12 +23,17 @@ def register(payload: schemas.RegisterRequest, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
 
+    # Auto-generate school_id for admin registrations
+    school_id = payload.school_id
+    if payload.role == "admin" and not school_id:
+        school_id = generate_school_id()
+
     user = models.User(
         name=payload.name.strip(),
         email=payload.email.strip().lower(),
         password=hash_password(payload.password),
         role=payload.role,
-        school_id=payload.school_id,
+        school_id=school_id,
     )
     db.add(user)
     db.commit()
@@ -47,5 +57,4 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserResponse)
 def get_me(current_user: models.User = Depends(get_current_user)):
-    """Get the currently authenticated user's profile."""
     return current_user

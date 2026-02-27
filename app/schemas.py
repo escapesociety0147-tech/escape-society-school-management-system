@@ -1,20 +1,20 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 from datetime import datetime
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class RegisterRequest(BaseModel):
-    name: str
-    email: str
-    password: str
-    role: str  # admin, teacher, parent, student
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=100)
+    role: str = Field(..., pattern="^(admin|teacher|parent|student)$")
     school_id: Optional[str] = None
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: str = Field(..., min_length=1)
 
 class UserResponse(BaseModel):
     id: int
@@ -22,6 +22,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     school_id: Optional[str]
+    photo_url: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -35,21 +36,28 @@ class LoginResponse(BaseModel):
 # ── Student ───────────────────────────────────────────────────────────────────
 
 class StudentCreate(BaseModel):
-    name: str
-    email: str
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
     contact: Optional[str] = None
     roll_number: Optional[str] = None
     grade: Optional[str] = None
     section: Optional[str] = None
     school_id: Optional[str] = None
+    user_id: Optional[int] = None
+    parent_user_id: Optional[int] = None
+    teacher_user_id: Optional[int] = None
 
 class StudentUpdate(BaseModel):
     name: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     contact: Optional[str] = None
     roll_number: Optional[str] = None
     grade: Optional[str] = None
     section: Optional[str] = None
+    photo_url: Optional[str] = None
+    user_id: Optional[int] = None
+    parent_user_id: Optional[int] = None
+    teacher_user_id: Optional[int] = None
 
 class StudentResponse(BaseModel):
     id: int
@@ -61,6 +69,10 @@ class StudentResponse(BaseModel):
     grade: Optional[str]
     section: Optional[str]
     school_id: Optional[str]
+    photo_url: Optional[str] = None
+    user_id: Optional[int] = None
+    parent_user_id: Optional[int] = None
+    teacher_user_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -70,19 +82,22 @@ class StudentResponse(BaseModel):
 # ── Teacher ───────────────────────────────────────────────────────────────────
 
 class TeacherCreate(BaseModel):
-    name: str
-    email: str
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
     phone: Optional[str] = None
     department: Optional[str] = None
     subjects: Optional[str] = None
     school_id: Optional[str] = None
+    user_id: Optional[int] = None
 
 class TeacherUpdate(BaseModel):
     name: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
     department: Optional[str] = None
     subjects: Optional[str] = None
+    photo_url: Optional[str] = None
+    user_id: Optional[int] = None
 
 class TeacherResponse(BaseModel):
     id: int
@@ -93,6 +108,8 @@ class TeacherResponse(BaseModel):
     department: Optional[str]
     subjects: Optional[str]
     school_id: Optional[str]
+    photo_url: Optional[str] = None
+    user_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -102,11 +119,12 @@ class TeacherResponse(BaseModel):
 # ── Parent ────────────────────────────────────────────────────────────────────
 
 class ParentCreate(BaseModel):
-    name: str
-    email: str
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
     phone: Optional[str] = None
     relationship: Optional[str] = "Parent"
     school_id: Optional[str] = None
+    user_id: Optional[int] = None
 
 class ParentResponse(BaseModel):
     id: int
@@ -126,8 +144,8 @@ class ParentResponse(BaseModel):
 
 class AttendanceCreate(BaseModel):
     student_id: int
-    date: str
-    status: str  # present, absent, late
+    date: str = Field(..., pattern="^\\d{4}-\\d{2}-\\d{2}$")
+    status: str = Field(..., pattern="^(present|absent|late)$")
 
 class AttendanceResponse(BaseModel):
     id: int
@@ -144,8 +162,8 @@ class AttendanceResponse(BaseModel):
 
 class ResultCreate(BaseModel):
     student_id: int
-    subject: str
-    score: float
+    subject: str = Field(..., min_length=1, max_length=100)
+    score: float = Field(..., ge=0, le=100)
     grade: Optional[str] = None
     term: Optional[str] = None
 
@@ -166,9 +184,9 @@ class ResultResponse(BaseModel):
 
 class PaymentCreate(BaseModel):
     student_id: int
-    amount_due: float
-    amount_paid: Optional[float] = 0
-    status: Optional[str] = "pending"
+    amount_due: float = Field(..., gt=0)
+    amount_paid: Optional[float] = Field(default=0, ge=0)
+    status: Optional[str] = Field(default="pending", pattern="^(paid|pending|overdue)$")
     fee_type: Optional[str] = None
     last_payment: Optional[str] = None
 
@@ -189,7 +207,7 @@ class PaymentResponse(BaseModel):
 # ── Event ─────────────────────────────────────────────────────────────────────
 
 class EventCreate(BaseModel):
-    title: str
+    title: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = None
     date: Optional[str] = None
     time: Optional[str] = None

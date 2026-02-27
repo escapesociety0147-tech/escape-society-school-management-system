@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+﻿from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -16,7 +16,6 @@ def get_parents(db: Session = Depends(get_db), current_user: models.User = Depen
     if current_user.role == "admin":
         return db.query(models.Parent).all()
     elif current_user.role == "parent":
-        # Parent can only see their own record
         return db.query(models.Parent).filter(models.Parent.user_id == current_user.id).all()
     else:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -51,41 +50,24 @@ def get_attendance(
     current_user: models.User = Depends(get_current_user)
 ):
     query = db.query(models.Attendance)
-
     if current_user.role == "admin":
         if student_id:
             query = query.filter(models.Attendance.student_id == student_id)
-
     elif current_user.role == "teacher":
-        # Teacher sees attendance for their assigned students only
-        assigned_ids = [
-            s.id for s in db.query(models.Student)
-            .filter(models.Student.teacher_user_id == current_user.id).all()
-        ]
+        assigned_ids = [s.id for s in db.query(models.Student).filter(models.Student.teacher_user_id == current_user.id).all()]
         query = query.filter(models.Attendance.student_id.in_(assigned_ids))
         if student_id:
             query = query.filter(models.Attendance.student_id == student_id)
-
     elif current_user.role == "parent":
-        # Parent sees attendance for their children only
-        child_ids = [
-            s.id for s in db.query(models.Student)
-            .filter(models.Student.parent_user_id == current_user.id).all()
-        ]
+        child_ids = [s.id for s in db.query(models.Student).filter(models.Student.parent_user_id == current_user.id).all()]
         query = query.filter(models.Attendance.student_id.in_(child_ids))
-        if student_id:
-            query = query.filter(models.Attendance.student_id == student_id)
-
     elif current_user.role == "student":
-        # Student sees only their own attendance
         own = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
         if not own:
             return []
         query = query.filter(models.Attendance.student_id == own.id)
-
     else:
         raise HTTPException(status_code=403, detail="Access denied")
-
     return query.all()
 
 @attendance_router.post("", response_model=schemas.AttendanceResponse, status_code=201)
@@ -94,16 +76,12 @@ def record_attendance(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Only admins and teachers can record attendance
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Only admins and teachers can record attendance")
-
-    # Teachers can only record for their assigned students
     if current_user.role == "teacher":
         student = db.query(models.Student).filter(models.Student.id == payload.student_id).first()
         if not student or student.teacher_user_id != current_user.id:
             raise HTTPException(status_code=403, detail="You are not assigned to this student")
-
     record = models.Attendance(student_id=payload.student_id, date=payload.date, status=payload.status)
     db.add(record)
     db.commit()
@@ -121,36 +99,22 @@ def get_results(
     current_user: models.User = Depends(get_current_user)
 ):
     query = db.query(models.Result)
-
     if current_user.role == "admin":
         if student_id:
             query = query.filter(models.Result.student_id == student_id)
-
     elif current_user.role == "teacher":
-        assigned_ids = [
-            s.id for s in db.query(models.Student)
-            .filter(models.Student.teacher_user_id == current_user.id).all()
-        ]
+        assigned_ids = [s.id for s in db.query(models.Student).filter(models.Student.teacher_user_id == current_user.id).all()]
         query = query.filter(models.Result.student_id.in_(assigned_ids))
-        if student_id:
-            query = query.filter(models.Result.student_id == student_id)
-
     elif current_user.role == "parent":
-        child_ids = [
-            s.id for s in db.query(models.Student)
-            .filter(models.Student.parent_user_id == current_user.id).all()
-        ]
+        child_ids = [s.id for s in db.query(models.Student).filter(models.Student.parent_user_id == current_user.id).all()]
         query = query.filter(models.Result.student_id.in_(child_ids))
-
     elif current_user.role == "student":
         own = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
         if not own:
             return []
         query = query.filter(models.Result.student_id == own.id)
-
     else:
         raise HTTPException(status_code=403, detail="Access denied")
-
     return query.all()
 
 @results_router.post("", response_model=schemas.ResultResponse, status_code=201)
@@ -178,27 +142,19 @@ def get_payments(
     current_user: models.User = Depends(get_current_user)
 ):
     query = db.query(models.Payment)
-
     if current_user.role == "admin":
         if student_id:
             query = query.filter(models.Payment.student_id == student_id)
-
     elif current_user.role == "parent":
-        child_ids = [
-            s.id for s in db.query(models.Student)
-            .filter(models.Student.parent_user_id == current_user.id).all()
-        ]
+        child_ids = [s.id for s in db.query(models.Student).filter(models.Student.parent_user_id == current_user.id).all()]
         query = query.filter(models.Payment.student_id.in_(child_ids))
-
     elif current_user.role == "student":
         own = db.query(models.Student).filter(models.Student.user_id == current_user.id).first()
         if not own:
             return []
         query = query.filter(models.Payment.student_id == own.id)
-
     else:
         raise HTTPException(status_code=403, detail="Access denied")
-
     return query.all()
 
 @payments_router.post("", response_model=schemas.PaymentResponse, status_code=201)
@@ -219,14 +175,17 @@ events_router = APIRouter(prefix="/events", tags=["Events"])
 
 @events_router.get("", response_model=List[schemas.EventResponse])
 def get_events(
-    school_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # All authenticated users can see events
     query = db.query(models.Event)
-    if school_id:
-        query = query.filter(models.Event.school_id == school_id)
+    if current_user.role == "admin":
+        # Admin only sees events for their school
+        if current_user.school_id:
+            query = query.filter(models.Event.school_id == current_user.school_id)
+    elif current_user.role in ["teacher", "parent", "student"]:
+        # All other roles only see events for their school
+        query = query.filter(models.Event.school_id == current_user.school_id)
     return query.all()
 
 @events_router.post("", response_model=schemas.EventResponse, status_code=201)

@@ -13,14 +13,16 @@ router = APIRouter(prefix="/teachers", tags=["Teachers"])
 
 @router.get("", response_model=List[schemas.TeacherResponse])
 def get_teachers(
-    school_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    query = db.query(models.Teacher)
-    if school_id:
-        query = query.filter(models.Teacher.school_id == school_id)
-    return query.all()
+    if current_user.role == "admin":
+        return db.query(models.Teacher).all()
+    elif current_user.role == "teacher":
+        # Teacher can only see their own record
+        return db.query(models.Teacher).filter(models.Teacher.user_id == current_user.id).all()
+    else:
+        raise HTTPException(status_code=403, detail="Access denied")
 
 
 @router.post("", response_model=schemas.TeacherResponse, status_code=201)
@@ -43,6 +45,7 @@ def create_teacher(
         department=payload.department,
         subjects=payload.subjects,
         school_id=payload.school_id,
+        user_id=payload.user_id,
     )
     db.add(teacher)
     db.commit()

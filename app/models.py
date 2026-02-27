@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
+﻿from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -6,19 +6,18 @@ from database import Base
 
 class User(Base):
     __tablename__ = "users"
-
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # admin, teacher, parent, student
+    role = Column(String, nullable=False)
     school_id = Column(String, nullable=True)
+    photo_url = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
 
 class Student(Base):
     __tablename__ = "students"
-
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(String, unique=True, index=True)
     name = Column(String, nullable=False)
@@ -28,16 +27,11 @@ class Student(Base):
     grade = Column(String)
     section = Column(String)
     school_id = Column(String)
-
-    # Links to the student's own User account
+    photo_url = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    # Links to the parent's User account
     parent_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    # Links to the assigned teacher's User account
     teacher_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
     created_at = Column(DateTime, server_default=func.now())
-
     attendance = relationship("Attendance", back_populates="student")
     results = relationship("Result", back_populates="student")
     payments = relationship("Payment", back_populates="student")
@@ -45,7 +39,6 @@ class Student(Base):
 
 class Teacher(Base):
     __tablename__ = "teachers"
-
     id = Column(Integer, primary_key=True, index=True)
     emp_id = Column(String, unique=True, index=True)
     name = Column(String, nullable=False)
@@ -54,16 +47,13 @@ class Teacher(Base):
     department = Column(String)
     subjects = Column(String)
     school_id = Column(String)
-
-    # Links to the teacher's own User account
+    photo_url = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
     created_at = Column(DateTime, server_default=func.now())
 
 
 class Parent(Base):
     __tablename__ = "parents"
-
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(String, unique=True, index=True)
     name = Column(String, nullable=False)
@@ -71,28 +61,22 @@ class Parent(Base):
     phone = Column(String)
     relationship = Column(String, default="Parent")
     school_id = Column(String)
-
-    # Links to the parent's own User account
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
     created_at = Column(DateTime, server_default=func.now())
 
 
 class Attendance(Base):
     __tablename__ = "attendance"
-
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
     date = Column(String, nullable=False)
-    status = Column(String, nullable=False)  # present, absent, late
+    status = Column(String, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
-
     student = relationship("Student", back_populates="attendance")
 
 
 class Result(Base):
     __tablename__ = "results"
-
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
     subject = Column(String, nullable=False)
@@ -100,13 +84,11 @@ class Result(Base):
     grade = Column(String)
     term = Column(String)
     created_at = Column(DateTime, server_default=func.now())
-
     student = relationship("Student", back_populates="results")
 
 
 class Payment(Base):
     __tablename__ = "payments"
-
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
     amount_due = Column(Float)
@@ -115,13 +97,11 @@ class Payment(Base):
     fee_type = Column(String)
     last_payment = Column(String)
     created_at = Column(DateTime, server_default=func.now())
-
     student = relationship("Student", back_populates="payments")
 
 
 class Event(Base):
     __tablename__ = "events"
-
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(Text)
@@ -135,7 +115,6 @@ class Event(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String)

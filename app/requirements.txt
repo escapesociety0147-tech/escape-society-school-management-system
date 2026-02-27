@@ -1,0 +1,9 @@
+﻿fastapi
+uvicorn
+sqlalchemy
+pymysql
+bcrypt==5.0.0
+httpx
+python-dotenv
+cloudinary
+python-multipart

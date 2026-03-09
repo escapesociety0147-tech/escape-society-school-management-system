@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from '@/lib/auth'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import DashboardShell from '@/components/dashboard/layout/DashboardShell'

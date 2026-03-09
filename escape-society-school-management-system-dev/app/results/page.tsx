@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from '@/lib/auth'
+
 import { useMemo, useState, useEffect, type FormEvent } from 'react'
 import ResultsTable, { type ResultRow } from '@/components/results/ResultsTable'
 import DashboardShell from '@/components/dashboard/layout/DashboardShell'

@@ -1,5 +1,7 @@
 'use client'
 
+import { apiFetch } from '@/lib/auth'
+
 import { useEffect, useMemo, useState } from 'react'
 import AttendanceTable, { type AttendanceStudent } from '@/components/attendance/AttendanceTable'
 import DashboardShell from '@/components/dashboard/layout/DashboardShell'

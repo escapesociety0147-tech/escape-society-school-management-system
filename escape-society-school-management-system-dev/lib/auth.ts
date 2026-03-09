@@ -1,76 +1,146 @@
-import { cookies } from 'next/headers'
+/**
+ * auth.ts — centralised API fetch with automatic JWT refresh
+ * Drop this in: escape-society-school-management-system-dev/lib/auth.ts
+ */
 
-export type UserRole = 'admin' | 'teacher' | 'parent' | 'student'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
 
-export interface User {
-  id: string
-  email: string
-  name: string
-  role: UserRole
-  schoolId?: string
-  avatar?: string
+// ── Cookie helpers ────────────────────────────────────────────────────────────
+
+export function getCookie(name: string): string {
+  if (typeof document === 'undefined') return ''
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : ''
 }
 
-export async function getCurrentUser(): Promise<User | null> {
-  const cookieStore = cookies()
-  const token = cookieStore.get('auth_token')
-  
-  if (!token) return null
+export function setCookie(name: string, value: string, days = 7) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString()
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
+}
+
+export function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`
+}
+
+// ── Token helpers ─────────────────────────────────────────────────────────────
+
+function getAccessToken(): string {
+  return getCookie('auth_token')
+}
+
+function getRefreshToken(): string {
+  return getCookie('refresh_token')
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    // Treat as expired 60 seconds before actual expiry to avoid edge cases
+    return payload.exp * 1000 < Date.now() + 60_000
+  } catch {
+    return true
+  }
+}
+
+// ── Token refresh ─────────────────────────────────────────────────────────────
+
+let refreshPromise: Promise<string> | null = null
+
+async function refreshAccessToken(): Promise<string> {
+  // Deduplicate concurrent refresh calls
+  if (refreshPromise) return refreshPromise
+
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) throw new Error('No refresh token — please log in again.')
+
+    const res = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+
+    if (!res.ok) {
+      // Refresh failed — clear tokens and redirect to login
+      deleteCookie('auth_token')
+      deleteCookie('refresh_token')
+      if (typeof window !== 'undefined') window.location.href = '/auth/login'
+      throw new Error('Session expired. Please log in again.')
+    }
+
+    const data = await res.json()
+    const newToken = data.access_token
+    setCookie('auth_token', newToken)
+    if (data.refresh_token) setCookie('refresh_token', data.refresh_token)
+    return newToken
+  })()
 
   try {
-    // In a real app, you would validate the token with your backend
-    // Local implementation without a backend session validator.
-    const userData = cookieStore.get('user_data')
-    
-    if (userData) {
-      return JSON.parse(userData.value) as User
+    return await refreshPromise
+  } finally {
+    refreshPromise = null
+  }
+}
+
+// ── Main fetch wrapper ────────────────────────────────────────────────────────
+
+/**
+ * Drop-in replacement for fetch() that:
+ *  1. Attaches the current JWT automatically
+ *  2. Refreshes the token if expired before sending
+ *  3. Retries once with the new token if the server returns 401
+ *  4. Redirects to /auth/login if refresh also fails
+ */
+export async function apiFetch(path: string, options: RequestInit = {}): Promise<any> {
+  let token = getAccessToken()
+
+  // Proactively refresh if token is about to expire
+  if (token && isTokenExpired(token)) {
+    token = await refreshAccessToken()
+  }
+
+  const makeRequest = async (t: string) => {
+    return fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(t ? { Authorization: `Bearer ${t}` } : {}),
+        ...options.headers,
+      },
+    })
+  }
+
+  let res = await makeRequest(token)
+
+  // If 401, try refreshing once then retry
+  if (res.status === 401) {
+    try {
+      token = await refreshAccessToken()
+      res = await makeRequest(token)
+    } catch {
+      // refreshAccessToken already redirects — just rethrow
+      throw new Error('Session expired. Please log in again.')
     }
-    
-    return null
-  } catch (error) {
-    console.error('Error getting current user:', error)
-    return null
   }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `Request failed: ${res.status}`)
+  }
+
+  // Return null for 204 No Content
+  if (res.status === 204) return null
+  return res.json()
 }
 
-export async function login(email: string, password: string): Promise<{ user: User; token: string } | null> {
-  try {
-    if (email && password) {
-      const user: User = {
-        id: email,
-        email,
-        name: email.split('@')[0],
-        role: 'admin',
-      }
-      const token = `tok_${Date.now().toString(36)}_${Math.random().toString(16).slice(2)}`
+// ── Auth helpers ──────────────────────────────────────────────────────────────
 
-      return { user, token }
-    }
-    
-    return null
-  } catch (error) {
-    console.error('Login error:', error)
-    return null
-  }
+export function logout() {
+  deleteCookie('auth_token')
+  deleteCookie('refresh_token')
+  if (typeof window !== 'undefined') window.location.href = '/auth/login'
 }
 
-export async function logout(): Promise<void> {
-  // Clear auth cookies
-  const cookieStore = cookies()
-  cookieStore.delete('auth_token')
-  cookieStore.delete('user_data')
-  cookieStore.delete('user_type')
-}
-
-export function hasPermission(user: User | null, requiredRole: UserRole): boolean {
-  if (!user) return false
-  
-  const roleHierarchy: Record<UserRole, number> = {
-    admin: 4,
-    teacher: 3,
-    parent: 2,
-    student: 1,
-  }
-  
-  return roleHierarchy[user.role] >= roleHierarchy[requiredRole]
+export function isLoggedIn(): boolean {
+  return Boolean(getAccessToken())
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { Edit, Trash2, Eye } from 'lucide-react'
+import Avatar from '@/components/ui/Avatar'
 
 export interface Student {
   id: number
@@ -14,6 +15,7 @@ export interface Student {
   status: 'Active' | 'Inactive'
   createdAt?: string
   schoolId?: string
+  photoUrl?: string
 }
 
 interface StudentTableProps {
@@ -21,9 +23,10 @@ interface StudentTableProps {
   onRemove?: (id: number) => void
   onEdit?: (id: number) => void
   onView?: (id: number) => void
+  onPhotoUpdate?: (id: number, url: string) => void
 }
 
-export default function StudentTable({ students, onRemove, onEdit, onView }: StudentTableProps) {
+export default function StudentTable({ students, onRemove, onEdit, onView, onPhotoUpdate }: StudentTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -44,11 +47,13 @@ export default function StudentTable({ students, onRemove, onEdit, onView }: Stu
           {students.map((student) => (
             <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
               <td className="px-6 py-4">
-                <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
-                  <span className="text-primary-600 dark:text-primary-400 font-medium">
-                    {student.name.charAt(0)}
-                  </span>
-                </div>
+                <Avatar
+                  name={student.name}
+                  photoUrl={student.photoUrl}
+                  size="md"
+                  editable={!!onPhotoUpdate}
+                  onUpload={(url) => onPhotoUpdate?.(student.id, url)}
+                />
               </td>
               <td className="table-cell font-medium">{student.studentId || '--'}</td>
               <td className="table-cell font-medium">#{student.rollNumber}</td>
@@ -67,25 +72,13 @@ export default function StudentTable({ students, onRemove, onEdit, onView }: Stu
               </td>
               <td className="px-6 py-4">
                 <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => onView?.(student.id)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  >
+                  <button type="button" onClick={() => onView?.(student.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                     <Eye className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onEdit?.(student.id)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  >
+                  <button type="button" onClick={() => onEdit?.(student.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                     <Edit className="h-4 w-4 text-primary-600 dark:text-primary-400" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onRemove?.(student.id)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  >
+                  <button type="button" onClick={() => onRemove?.(student.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                     <Trash2 className="h-4 w-4 text-error-600 dark:text-error-400" />
                   </button>
                 </div>

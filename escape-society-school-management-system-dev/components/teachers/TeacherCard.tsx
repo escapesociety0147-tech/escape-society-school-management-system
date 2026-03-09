@@ -1,4 +1,7 @@
+'use client'
+
 import { Mail, Phone, Eye, Trash2, RefreshCcw, Pencil } from 'lucide-react'
+import Avatar from '@/components/ui/Avatar'
 
 interface TeacherCardProps {
   teacher: {
@@ -10,21 +13,30 @@ interface TeacherCardProps {
     email: string
     phone: string
     status: string
+    photoUrl?: string
   }
   onRemove?: () => void
   onToggleStatus?: () => void
   onEdit?: () => void
+  onPhotoUpdate?: (url: string) => void
 }
 
-export default function TeacherCard({ teacher, onRemove, onToggleStatus, onEdit }: TeacherCardProps) {
+export default function TeacherCard({ teacher, onRemove, onToggleStatus, onEdit, onPhotoUpdate }: TeacherCardProps) {
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-primary-300 dark:hover:border-primary-700 transition-colors">
       <div className="flex justify-between items-start mb-4">
-        <div>
-          <h4 className="font-bold text-lg text-gray-900 dark:text-white">
-            {teacher.name}
-          </h4>
-          <p className="text-sm text-primary-600 dark:text-primary-400">{teacher.empId}</p>
+        <div className="flex items-center gap-3">
+          <Avatar
+            name={teacher.name}
+            photoUrl={teacher.photoUrl}
+            size="lg"
+            editable={!!onPhotoUpdate}
+            onUpload={onPhotoUpdate}
+          />
+          <div>
+            <h4 className="font-bold text-lg text-gray-900 dark:text-white">{teacher.name}</h4>
+            <p className="text-sm text-primary-600 dark:text-primary-400">{teacher.empId}</p>
+          </div>
         </div>
         <span className={`px-2 py-1 rounded text-xs font-medium ${
           teacher.status === 'Active'
@@ -42,10 +54,7 @@ export default function TeacherCard({ teacher, onRemove, onToggleStatus, onEdit 
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Subjects Taught:</p>
         <div className="flex flex-wrap gap-1">
           {teacher.subjects.map((subject, index) => (
-            <span
-              key={index}
-              className="text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded"
-            >
+            <span key={index} className="text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded">
               {subject}
             </span>
           ))}
@@ -65,28 +74,15 @@ export default function TeacherCard({ teacher, onRemove, onToggleStatus, onEdit 
 
       <div className="flex flex-wrap gap-2">
         <button className="flex-1 btn-secondary flex items-center justify-center space-x-2">
-          <Eye className="h-4 w-4" />
-          <span>View Profile</span>
+          <Eye className="h-4 w-4" /><span>View Profile</span>
         </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center"
-        >
+        <button type="button" onClick={onEdit} className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center">
           <Pencil className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={onToggleStatus}
-          className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center"
-        >
+        <button type="button" onClick={onToggleStatus} className="px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center">
           <RefreshCcw className="h-4 w-4" />
         </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="px-3 py-2 rounded-lg border border-error-200 dark:border-error-800 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 flex items-center justify-center"
-        >
+        <button type="button" onClick={onRemove} className="px-3 py-2 rounded-lg border border-error-200 dark:border-error-800 text-error-600 dark:text-error-400 hover:bg-error-50 dark:hover:bg-error-900/20 flex items-center justify-center">
           <Trash2 className="h-4 w-4" />
         </button>
       </div>

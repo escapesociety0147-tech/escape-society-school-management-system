@@ -1,229 +1,198 @@
-## School Management System (FastAPI + Docker)
+# 🏫 Escape Society School Management System
 
-A backend School Management System built with FastAPI and MySQL, fully containerized using Docker and managed via Docker Compose and Makefile for simplified development and deployment workflows.
+A full-stack school management platform built with **Next.js** (frontend) and **FastAPI** (backend).
 
-### Project Status:
-This project is currently in early development.
-Only the base application and index endpoint are active.
-Core school management features are planned and listed below.
+---
 
-### Tech Stack
+## 🚀 Current Version: v3.4
 
-1. Backend: FastAPI (Python)
+---
 
-2. Database: MySQL 8.4
+## ✅ What's Been Built
 
-3. ORM: SQLAlchemy (planned)
+### 🔐 Authentication & Security
+- JWT access tokens (24hr) with automatic refresh tokens (30 days)
+- bcrypt password hashing with unique salts
+- Google OAuth login — auto-creates account on first login
+- Role-based access control: Admin, Teacher, Parent, Student
+- Input validation on all registration fields (Pydantic)
+- Auto-generated School IDs for admin registrations (`SCH-XXXXXXXX`)
 
-4. Containerization: Docker & Docker Compose
+### 📄 Pages Connected to Backend API
+| Page | Status |
+|------|--------|
+| School Registration | ✅ Connected |
+| Admin Login | ✅ Connected |
+| Google OAuth Callback | ✅ Connected |
+| Teacher Registration | ✅ Connected |
+| Student Registration | ✅ Connected |
+| Parent Registration | ✅ Connected |
+| Students Management | ✅ Connected |
+| Teachers Management | ✅ Connected |
+| Attendance | ✅ Connected |
+| Fee Management | ✅ Connected |
+| Exam Results | ✅ Connected |
+| Events | ✅ Connected |
 
-5. Process Management: Uvicorn
+### 🖼️ Photo Uploads
+- Cloudinary integration for profile photos
+- Reusable `Avatar` component with initials fallback and colour coding
+- Inline camera button to upload/change photo
+- Upload endpoints for students, teachers, profiles and school logo
 
-6. Automation: Makefile
+### 🛠️ Shared Utilities
+- `lib/auth.ts` — centralised API fetch with auto JWT refresh, cookie management, logout helper
+- `components/ui/Avatar.tsx` — reusable photo component used across StudentTable and TeacherCard
 
-7. Environment Config: .env file
+---
 
-#### Project Features (Current)
+## 🗂️ Project Structure
 
-##### Implemented
-
-1. Dockerized FastAPI application
-
-2. MySQL database container with persistent volume
-
-3. Health checks for database readiness
-
-3. Environment-based configuration
-
-4. Makefile commands for container lifecycle
-
-5. Index (/) endpoint for service availability check
-
-### Planned Features (In Progress / Roadmap)
-
-The following features are not yet implemented, but planned for upcoming releases:
-
-#### Student Management
-
-1. Student registration
-
-2. Student profile management
-
-3. Class and grade assignment
-
-#### Teacher Management
-
-1. Teacher profiles
-
-2. Subject assignments
-
-3. Class allocations
-
-#### Attendance Management
-
-1. Student attendance tracking
-
-2. Daily and term-based attendance records
-
-3. Attendance reports
-
-#### Examination & Results
-
-1. Exam creation
-
-2. Student exam results
-
-3. Performance summaries
-
-#### Fees Management
-
-1. Fees structure configuration
-
-2. Payment records
-
-3. Outstanding balance tracking
-
-#### Authentication & Authorization Features 
-1. Auth Middleware to protect API endpoints
-2. JWT Tokens for stateless authentication
-3. OAuth (Google, Facebook, Instagram) for easy third-party registration/login
-
-### Container Architecture
-
-The application runs using two Docker services:
-
-#### Web Service (FastAPI)
-
-1. Runs the FastAPI application
-
-2. Exposed on port 8000
-
-3. Uses bind mount for live code updates (development)
-
-4. Depends on database health check before startup
-
-#### Database Service (MySQL)
-
-1. MySQL 8.4 official image
-
-2. Persistent storage using Docker volumes
-
-3. Health check ensures readiness before app starts
-
-
-### Project Structure
-
-```bash
-.
-├── app/
+```
+escape-society-school-management-system/
+├── app/                          # FastAPI backend
 │   ├── main.py
-│   └── ...
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-├── Makefile
-├── .env
-└── README.md
-
-```
-### Environment Configuration
-```.env
-DB_HOST=db 
-DB_DATABASE=school-management-db
-DB_USER=your_username
-DB_PASSWORD=your_secret_password
-MYSQL_PORT=3306
-DB_CONNECTION=mysql
-DB_DRIVER=pymysql
-
-DATABASE_URL=mysql+pymysql://your_username:your_secret_password@db:3306/school-management-db
-
-
-```
-
-### Available Endpoints
-```
-Health / Index Endpoint
-GET /
-
-Response:
-
-{
-  "message": "School Management System API is running"
-}
-
+│   ├── models.py
+│   ├── schemas.py
+│   ├── security.py               # JWT + bcrypt + refresh tokens
+│   ├── database.py
+│   └── routers/
+│       ├── auth.py               # register, login, refresh, /me
+│       ├── google_auth.py        # Google OAuth
+│       ├── upload.py             # Cloudinary photo upload
+│       ├── students.py
+│       ├── teachers.py
+│       └── other.py              # attendance, results, payments, events, parents
+│
+└── escape-society-school-management-system-dev/   # Next.js frontend
+    ├── app/
+    │   ├── auth/login/
+    │   ├── auth/register/school|teacher|student|parent/
+    │   ├── auth/callback/        # Google OAuth
+    │   ├── students/
+    │   ├── teachers/
+    │   ├── attendance/
+    │   ├── fees/
+    │   ├── results/
+    │   └── events/
+    ├── components/
+    │   ├── ui/Avatar.tsx         # Reusable photo component
+    │   ├── students/StudentTable.tsx
+    │   └── teachers/TeacherCard.tsx
+    └── lib/
+        └── auth.ts               # Shared API fetch + JWT refresh
 ```
 
-### How to Run (Tester Instructions)
-1. **Install Docker (if not already installed):**
-   a. Docker Desktop: https://www.docker.com/products/docker-desktop/ (Windows/Mac)
-   b. sudo apt install docker.io docker-compose (Linux)
-2. **Clone the repository:**
-   ```bash
-   git clone <repo-url>
-   cd <repo-folder>
-   ```
-3. Create a .env file with the details in the Environment configuration above and update DB_USER and DB_PASSWORD    if needed.
-4. **Makefile Commands**
+---
 
-  The project includes a Makefile to simplify container management.
+## ⚙️ Environment Variables
 
-  ```Makefile
-  make up         # starts containers
-  make up-build   # starts containers with rebuild
-  make down       # stops containers
-  make down-v     # stops containers and removes persisted data
-  make logs       # shows the output (stdout and stderr) of a running or stopped container
-  make logs-db    # show the output of MYSQL logs
-  make logs-db    # show the output of FastAPI logs
-  make run        # Quick start and watch logs: rebuild, start, and follow FastAPI logs
-  ```
-5. Access the API:
-   Open your browser or use Postman to test:
-   
-   http://localhost:8000/
+### Backend (`app/.env`)
+```
+SECRET_KEY=your-secret-key
+REFRESH_SECRET=your-refresh-secret
+DATABASE_URL=sqlite:///./school.db
 
-### Development Notes
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/auth/google/callback
+FRONTEND_URL=http://localhost:3000
 
-1. Code changes are reflected instantly using Docker bind mounts
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+```
 
-2. Database readiness is handled via Docker health checks
+### Frontend (`escape-society-school-management-system-dev/.env.local`)
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
 
-3. The project follows production-ready container patterns, even at early stages
+---
 
-4. Future features will be added incrementally with proper migrations
+## 🏃 Running Locally
 
-### Production Considerations
+### Backend
+```bash
+cd app
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+API docs: `http://127.0.0.1:8000/docs`
 
-For production deployment:
+### Frontend
+```bash
+cd escape-society-school-management-system-dev
+npm install
+npm run dev
+```
+App: `http://localhost:3000`
 
-1. Remove bind mounts
+---
 
-2. Disable auto-reload
+## 🔑 API Endpoints
 
-3. Use multiple Uvicorn workers
+### Auth
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/register` | Register new user |
+| POST | `/auth/login` | Login — returns access + refresh token |
+| POST | `/auth/refresh` | Exchange refresh token for new access token |
+| GET | `/auth/me` | Get current user |
+| GET | `/auth/google/login` | Start Google OAuth |
+| GET | `/auth/google/callback` | Google OAuth callback |
 
-4. Secure environment variables
+### Core Resources
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET/POST | `/students` | List / create students |
+| GET/PUT/DELETE | `/students/{id}` | Get / update / delete student |
+| GET/POST | `/teachers` | List / create teachers |
+| GET/PUT/DELETE | `/teachers/{id}` | Get / update / delete teacher |
+| GET/POST | `/attendance` | List / mark attendance |
+| GET/POST | `/payments` | List / create fee payments |
+| PUT/DELETE | `/payments/{id}` | Update / delete payment |
+| GET/POST | `/results` | List / create exam results |
+| PUT/DELETE | `/results/{id}` | Update / delete result |
+| GET/POST | `/events` | List / create events |
+| PUT/DELETE | `/events/{id}` | Update / delete event |
 
-5. Use migrations (Alembic)
+### Uploads
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/upload/profile` | Upload own profile photo |
+| POST | `/upload/student/{id}` | Upload student photo (admin) |
+| POST | `/upload/teacher/{id}` | Upload teacher photo (admin) |
+| POST | `/upload/school` | Upload school logo (admin) |
 
-### Project Goals
+---
 
-This project aims to:
+## 🔒 Role-Based Access
 
-1. Demonstrate clean backend architecture
+| Role | Access |
+|------|--------|
+| Admin | Full access to everything |
+| Teacher | Own profile + assigned students only |
+| Parent | Own children's data only |
+| Student | Own record only |
 
-2. Follow real world containerization best practices
+---
 
-3. Provide a scalable foundation for a full school management system
+## 📦 Key Dependencies
 
-### Contributing
+### Backend
+- FastAPI, Uvicorn, SQLAlchemy
+- bcrypt, Cloudinary, python-multipart
+- httpx, pydantic[email]
 
-Contributions, suggestions, and improvements are welcome.
-This project is under active development.
+### Frontend
+- Next.js 14, React, TypeScript, Tailwind CSS, lucide-react
 
-### License
+---
 
-This project is for educational and development purposes.
-License details to be added.
-
+## 🗺️ Roadmap
+- [ ] Switch SQLite → PostgreSQL for production
+- [ ] JWT token blacklist on logout
+- [ ] Email notifications for overdue fees
+- [ ] PDF report generation for results and attendance
+- [ ] Mobile app (React Native)

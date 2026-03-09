@@ -1,329 +1,209 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AttendanceTable, { type AttendanceStudent } from '@/components/attendance/AttendanceTable'
 import DashboardShell from '@/components/dashboard/layout/DashboardShell'
-import { Calendar, CheckCircle, XCircle } from 'lucide-react'
-import { useLocalStorageState } from '@/lib/useLocalStorage'
-import { seedStudents } from '@/lib/seedData'
-import { initialAttendanceHistory } from '@/lib/attendanceData'
+import { Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+
+function getToken(): string {
+  const match = document.cookie.match(/auth_token=([^;]+)/)
+  return match ? match[1] : ''
+}
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const token = getToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Request failed')
+  }
+  return res.json()
+}
 
 type AttendanceStudentRecord = AttendanceStudent & { grade: string; section: string }
 
 export default function AttendancePage() {
-  const [students] = useLocalStorageState('esm_students', seedStudents)
-  const allStudents: AttendanceStudentRecord[] = useMemo(
-    () =>
-      students.map((student) => ({
-        id: student.id,
-        rollNo: student.rollNumber,
-        name: student.name,
-        grade: student.grade,
-        section: student.section,
-      })),
-    [students]
-  )
-  const studentIdSet = useMemo(() => new Set(allStudents.map((student) => student.id)), [allStudents])
-  const defaultGrade = allStudents[0]?.grade ?? 'Grade 8'
-  const defaultSection = allStudents[0]?.section ?? 'A'
-  const buildAttendance = (list: AttendanceStudent[]) => {
-    const next: Record<number, 'present' | 'absent'> = {}
-    list.forEach((student) => {
-      next[student.id] = 'present'
-    })
-    return next
-  }
-  const initialActiveStudents = allStudents.filter(
-    (student) => student.grade === defaultGrade && student.section === defaultSection
-  )
-  const [selectedGrade, setSelectedGrade] = useState(defaultGrade)
-  const [selectedSection, setSelectedSection] = useState(defaultSection)
-  const [attendanceDate, setAttendanceDate] = useState(
-    () => new Date().toISOString().slice(0, 10)
-  )
-  const [activeStudents, setActiveStudents] = useState<AttendanceStudent[]>(
-    initialActiveStudents
-  )
-  const [attendance, setAttendance] = useState<Record<number, 'present' | 'absent'>>(() =>
-    buildAttendance(initialActiveStudents)
-  )
+  const [allStudents, setAllStudents] = useState<AttendanceStudentRecord[]>([])
+  const [selectedGrade, setSelectedGrade] = useState('Grade 8')
+  const [selectedSection, setSelectedSection] = useState('A')
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [attendance, setAttendance] = useState<Record<number, 'present' | 'absent'>>({})
   const [saveStatus, setSaveStatus] = useState('')
-  const [attendanceHistory, setAttendanceHistory] = useLocalStorageState(
-    'esm_attendance_history',
-    initialAttendanceHistory
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [historyRecords, setHistoryRecords] = useState<any[]>([])
+
+  const fetchStudents = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await apiFetch('/students')
+      const mapped: AttendanceStudentRecord[] = data.map((s: any) => ({
+        id: s.id,
+        rollNo: s.roll_number || '',
+        name: s.name,
+        grade: s.grade || '',
+        section: s.section || '',
+      }))
+      setAllStudents(mapped)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load students.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchHistory = async () => {
+    try {
+      const data = await apiFetch('/attendance')
+      setHistoryRecords(data)
+    } catch { }
+  }
+
+  useEffect(() => {
+    fetchStudents()
+    fetchHistory()
+  }, [])
+
+  const activeStudents = useMemo(() =>
+    allStudents.filter(s => s.grade === selectedGrade && s.section === selectedSection),
+    [allStudents, selectedGrade, selectedSection]
   )
-  const [historyNote, setHistoryNote] = useState('')
-  const skipAutoLoadRef = useRef(false)
-  const hasSelection =
-    selectedGrade && selectedSection && !selectedGrade.startsWith('Select') && !selectedSection.startsWith('Select')
-  const tableTitle = hasSelection
-    ? `Mark Attendance - ${selectedGrade} ${selectedSection}`
-    : 'Mark Attendance'
+
+  useEffect(() => {
+    const next: Record<number, 'present' | 'absent'> = {}
+    activeStudents.forEach(s => { next[s.id] = 'present' })
+    setAttendance(next)
+  }, [activeStudents])
 
   const attendanceSummary = useMemo(() => {
     const total = activeStudents.length
-    const present = activeStudents.filter((student) => attendance[student.id] !== 'absent').length
+    const present = activeStudents.filter(s => attendance[s.id] !== 'absent').length
     const absent = total - present
-    return {
-      total,
-      present,
-      absent,
-      rate: total ? ((present / total) * 100).toFixed(1) : '0.0',
-    }
+    return { total, present, absent, rate: total ? ((present / total) * 100).toFixed(1) : '0.0' }
   }, [activeStudents, attendance])
 
   const handleAttendanceChange = (studentId: number, status: 'present' | 'absent') => {
-    setAttendance((prev) => ({ ...prev, [studentId]: status }))
+    setAttendance(prev => ({ ...prev, [studentId]: status }))
   }
 
-  const handleLoadStudents = () => {
-    const filtered = allStudents.filter(
-      (student) => student.grade === selectedGrade && student.section === selectedSection
-    )
-    setActiveStudents(filtered)
-    setAttendance(buildAttendance(filtered))
-  }
-
-  useEffect(() => {
-    if (!allStudents.length) {
-      setActiveStudents([])
-      setAttendance({})
-      return
-    }
-    if (skipAutoLoadRef.current) {
-      skipAutoLoadRef.current = false
-      return
-    }
-    const filtered = allStudents.filter(
-      (student) => student.grade === selectedGrade && student.section === selectedSection
-    )
-    setActiveStudents(filtered)
-    setAttendance(buildAttendance(filtered))
-  }, [allStudents, selectedGrade, selectedSection])
-
-  useEffect(() => {
-    if (!attendanceHistory.length) return
-    const cleaned = attendanceHistory.filter((record) => {
-      if (!record || !record.dateISO || !record.grade || !record.section) return false
-      if (!record.attendance || Object.keys(record.attendance).length === 0) return false
-      if (studentIdSet.size === 0) return false
-      const hasRegisteredStudent = Object.keys(record.attendance).some((id) =>
-        studentIdSet.has(Number(id))
+  const handleSaveAttendance = async () => {
+    setSaving(true)
+    try {
+      await Promise.all(
+        activeStudents.map(student =>
+          apiFetch('/attendance', {
+            method: 'POST',
+            body: JSON.stringify({
+              student_id: student.id,
+              date: attendanceDate,
+              status: attendance[student.id] || 'present',
+            }),
+          })
+        )
       )
-      return hasRegisteredStudent
-    })
-    if (cleaned.length !== attendanceHistory.length) {
-      setAttendanceHistory(cleaned)
-      setHistoryNote('Removed attendance history without registered students.')
-      setTimeout(() => setHistoryNote(''), 2000)
-    }
-  }, [attendanceHistory, setAttendanceHistory, studentIdSet])
-
-  const handleSaveAttendance = () => {
-    const recordId = `${attendanceDate}_${selectedGrade}_${selectedSection}`
-    const dateLabel = new Date(attendanceDate).toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-    })
-    const record = {
-      id: recordId,
-      date: dateLabel,
-      dateISO: attendanceDate,
-      grade: selectedGrade,
-      section: selectedSection,
-      present: attendanceSummary.present,
-      absent: attendanceSummary.absent,
-      attendance,
-    }
-    setAttendanceHistory((prev) => {
-      const existingIndex = prev.findIndex((item) => item.id === recordId)
-      if (existingIndex >= 0) {
-        const updated = [...prev]
-        updated[existingIndex] = record
-        return updated
-      }
-      return [record, ...prev]
-    })
-    setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`)
-    setTimeout(() => setSaveStatus(''), 2000)
-  }
-
-  const handleViewRecord = (record: (typeof initialAttendanceHistory)[number]) => {
-    skipAutoLoadRef.current = true
-    setSelectedGrade(record.grade)
-    setSelectedSection(record.section)
-    setAttendanceDate(record.dateISO)
-    const filtered = allStudents.filter(
-      (student) => student.grade === record.grade && student.section === record.section
-    )
-    setActiveStudents(filtered)
-    if (record.attendance && Object.keys(record.attendance).length > 0) {
-      setAttendance(record.attendance)
-    } else {
-      setAttendance(buildAttendance(filtered))
+      setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`)
+      setTimeout(() => setSaveStatus(''), 3000)
+      await fetchHistory()
+    } catch (err: any) {
+      setSaveStatus('Failed to save: ' + err.message)
+    } finally {
+      setSaving(false)
     }
   }
 
   return (
     <DashboardShell>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Attendance Management
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Mark and view student attendance with real-time indicators
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Management</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Mark and view student attendance with real-time indicators</p>
+          </div>
+          <button onClick={fetchStudents} className="btn-secondary flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
         </div>
+
+        {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <div className="card">
               <div className="flex flex-wrap gap-4 mb-6">
-                <select
-                  className="input-field flex-1 min-w-[150px]"
-                  value={selectedGrade}
-                  onChange={(event) => setSelectedGrade(event.target.value)}
-                >
+                <select className="input-field flex-1 min-w-[150px]" value={selectedGrade} onChange={e => setSelectedGrade(e.target.value)}>
                   <option>Select Grade</option>
-                  <option>Grade 7</option>
-                  <option>Grade 8</option>
-                  <option>Grade 9</option>
-                  <option>Grade 10</option>
-                  <option>Grade 11</option>
-                  <option>Grade 12</option>
+                  {['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'].map(g => <option key={g}>{g}</option>)}
                 </select>
-                <select
-                  className="input-field flex-1 min-w-[150px]"
-                  value={selectedSection}
-                  onChange={(event) => setSelectedSection(event.target.value)}
-                >
+                <select className="input-field flex-1 min-w-[150px]" value={selectedSection} onChange={e => setSelectedSection(e.target.value)}>
                   <option>Select Section</option>
-                  <option>A</option>
-                  <option>B</option>
-                  <option>C</option>
+                  {['A','B','C'].map(s => <option key={s}>{s}</option>)}
                 </select>
-                <input
-                  type="date"
-                  value={attendanceDate}
-                  onChange={(event) => setAttendanceDate(event.target.value)}
-                  className="input-field flex-1 min-w-[150px]"
+                <input type="date" className="input-field flex-1 min-w-[150px]" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} />
+              </div>
+
+              <div className="flex gap-4 mb-6">
+                <div className="flex-1 bg-success-50 dark:bg-success-900/20 rounded-lg p-3 text-center">
+                  <CheckCircle className="h-6 w-6 text-success-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-success-700 dark:text-success-400">{attendanceSummary.present}</p>
+                  <p className="text-sm text-success-600">Present</p>
+                </div>
+                <div className="flex-1 bg-error-50 dark:bg-error-900/20 rounded-lg p-3 text-center">
+                  <XCircle className="h-6 w-6 text-error-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-error-700 dark:text-error-400">{attendanceSummary.absent}</p>
+                  <p className="text-sm text-error-600">Absent</p>
+                </div>
+                <div className="flex-1 bg-primary-50 dark:bg-primary-900/20 rounded-lg p-3 text-center">
+                  <Calendar className="h-6 w-6 text-primary-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-primary-700 dark:text-primary-400">{attendanceSummary.rate}%</p>
+                  <p className="text-sm text-primary-600">Rate</p>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3"></div>
+                  <p className="text-gray-500">Loading students...</p>
+                </div>
+              ) : (
+                <AttendanceTable
+                  students={activeStudents}
+                  attendance={attendance}
+                  onAttendanceChange={handleAttendanceChange}
+                  title={`Mark Attendance - ${selectedGrade} ${selectedSection}`}
                 />
-                <button type="button" className="btn-primary" onClick={handleLoadStudents}>
-                  Load Students
+              )}
+
+              <div className="flex items-center justify-between mt-4">
+                {saveStatus && <p className="text-sm text-success-600 dark:text-success-400">{saveStatus}</p>}
+                <button onClick={handleSaveAttendance} disabled={saving || activeStudents.length === 0} className="ml-auto btn-primary disabled:opacity-60">
+                  {saving ? 'Saving...' : 'Save Attendance'}
                 </button>
               </div>
-
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Students</p>
-                  <p className="text-2xl font-bold mt-1">{attendanceSummary.total}</p>
-                </div>
-                <div className="bg-success-50 dark:bg-success-900/20 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-success-700 dark:text-success-400">Present</p>
-                      <p className="text-2xl font-bold mt-1 text-success-700 dark:text-success-400">
-                        {attendanceSummary.present}
-                      </p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-success-500" />
-                  </div>
-                </div>
-                <div className="bg-error-50 dark:bg-error-900/20 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-error-700 dark:text-error-400">Absent</p>
-                      <p className="text-2xl font-bold mt-1 text-error-700 dark:text-error-400">
-                        {attendanceSummary.absent}
-                      </p>
-                    </div>
-                    <XCircle className="h-8 w-8 text-error-500" />
-                  </div>
-                </div>
-                <div className="bg-primary-50 dark:bg-primary-900/20 p-4 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-primary-700 dark:text-primary-400">Attendance Rate</p>
-                      <p className="text-2xl font-bold mt-1 text-primary-700 dark:text-primary-400">
-                        {attendanceSummary.rate}%
-                      </p>
-                    </div>
-                    <span className="bg-primary-100 dark:bg-primary-800 text-primary-800 dark:text-primary-300 text-xs font-semibold px-2 py-1 rounded">
-                      {Number(attendanceSummary.rate) >= 95 ? 'Excellent' : 'On Track'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <AttendanceTable
-                students={activeStudents}
-                attendance={attendance}
-                onAttendanceChange={handleAttendanceChange}
-                onSave={handleSaveAttendance}
-                title={tableTitle}
-              />
-      {saveStatus && (
-        <p className="mt-3 text-sm text-success-600 dark:text-success-400">{saveStatus}</p>
-      )}
-      {historyNote && (
-        <p className="mt-3 text-sm text-warning-600 dark:text-warning-400">{historyNote}</p>
-      )}
             </div>
           </div>
 
-          <div>
-            <div className="card mb-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
-                Attendance History
-              </h3>
-              <div className="space-y-4">
-                {[...attendanceHistory]
-                  .sort((a, b) => b.dateISO.localeCompare(a.dateISO))
-                  .map((record) => (
-                  <div key={record.id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="font-medium">{record.date}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {record.grade}-{record.section}
-                </p>
+          <div className="card">
+            <h3 className="font-semibold mb-4">Recent Records</h3>
+            {historyRecords.length === 0 ? (
+              <p className="text-sm text-gray-500">No attendance records yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {historyRecords.slice(0, 20).map((record: any) => (
+                  <div key={record.id} className="flex justify-between text-sm p-2 rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                    <span className="font-medium">Student #{record.student_id}</span>
+                    <span className="text-gray-500">{record.date}</span>
+                    <span className={record.status === 'present' ? 'text-success-600' : 'text-error-600'}>{record.status}</span>
+                  </div>
+                ))}
               </div>
-              <div className="text-right">
-                <p className="text-success-600 dark:text-success-400 font-medium">
-                  {record.present} Present
-                </p>
-                <p className="text-error-600 dark:text-error-400 text-sm">
-                  {record.absent} Absent
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="w-full mt-2 text-sm btn-secondary py-1"
-              onClick={() => handleViewRecord(record)}
-            >
-              View Details
-            </button>
-          </div>
-        ))}
-                {attendanceHistory.length > 0 && (
-                  <button
-                    type="button"
-                    className="w-full text-sm btn-secondary py-2"
-                    onClick={() => {
-                      setAttendanceHistory([])
-                      setHistoryNote('Attendance history cleared.')
-                      setTimeout(() => setHistoryNote(''), 2000)
-                    }}
-                  >
-                    Clear Attendance History
-                  </button>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

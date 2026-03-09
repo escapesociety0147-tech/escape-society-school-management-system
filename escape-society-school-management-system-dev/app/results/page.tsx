@@ -1,17 +1,39 @@
 'use client'
 
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, useEffect, type FormEvent } from 'react'
 import ResultsTable, { type ResultRow } from '@/components/results/ResultsTable'
 import DashboardShell from '@/components/dashboard/layout/DashboardShell'
-import { TrendingUp, Target, Award, Plus, X } from 'lucide-react'
-import { useLocalStorageState } from '@/lib/useLocalStorage'
-import { initialResults } from '@/lib/resultsData'
-import { seedStudents } from '@/lib/seedData'
-import type { Student } from '@/components/students/StudentTable'
+import { TrendingUp, Target, Award, Plus, X, RefreshCw } from 'lucide-react'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+
+function getToken(): string {
+  const match = document.cookie.match(/auth_token=([^;]+)/)
+  return match ? match[1] : ''
+}
+
+async function apiFetch(path: string, options: RequestInit = {}) {
+  const token = getToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Request failed')
+  }
+  return res.json()
+}
+
+const calculateGrade = (p: number) => p >= 90 ? 'A+' : p >= 80 ? 'A' : p >= 70 ? 'B' : p >= 60 ? 'C' : 'D'
+const calculateRemarks = (p: number) => p >= 90 ? 'Excellent' : p >= 80 ? 'Strong performance' : p >= 70 ? 'Satisfactory' : p >= 60 ? 'Average' : 'Needs improvement'
+const parseScore = (v: string) => Math.min(Math.max(parseFloat(v) || 0, 0), 100)
 
 export default function ResultsPage() {
-  const [results, setResults] = useLocalStorageState('esm_results', initialResults)
-  const [students] = useLocalStorageState<Student[]>('esm_students', seedStudents)
+  const [results, setResults] = useState<ResultRow[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [gradeFilter, setGradeFilter] = useState('All Grades')
   const [sectionFilter, setSectionFilter] = useState('All Sections')
@@ -21,651 +43,194 @@ export default function ResultsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [selectedStudentId, setSelectedStudentId] = useState<number | ''>('')
-  const [formData, setFormData] = useState({
-    rollNo: '',
-    name: '',
-    classGrade: '',
-    section: '',
-    math: '',
-    english: '',
-    science: '',
-    history: '',
-  })
+  const [formData, setFormData] = useState({ rollNo: '', name: '', classGrade: '', section: '', math: '', english: '', science: '', history: '' })
+
+  const fetchData = async () => {
+    setLoading(true); setError('')
+    try {
+      const [resultsData, studentsData] = await Promise.all([apiFetch('/results'), apiFetch('/students')])
+      setStudents(studentsData)
+      const mapped: ResultRow[] = resultsData.map((r: any) => {
+        const student = studentsData.find((s: any) => s.id === r.student_id)
+        const math = r.math_score ?? 0
+        const english = r.english_score ?? 0
+        const science = r.science_score ?? 0
+        const history = r.history_score ?? 0
+        const total = math + english + science + history
+        const percentage = parseFloat((total / 4).toFixed(1))
+        return {
+          id: r.id,
+          rollNo: student?.roll_number || '',
+          name: student?.name || `Student #${r.student_id}`,
+          classGrade: student?.grade || '',
+          section: student?.section || '',
+          math, english, science, history, total, percentage,
+          grade: calculateGrade(percentage),
+          remarks: calculateRemarks(percentage),
+        }
+      })
+      setResults(mapped)
+    } catch (err: any) { setError(err.message || 'Failed to load results.') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchData() }, [])
 
   const filteredResults = useMemo(() => {
-    const filtered = results.filter((student) => {
-      const matchesSearch =
-        student.name.toLowerCase().includes(search.toLowerCase()) ||
-        student.rollNo.toLowerCase().includes(search.toLowerCase())
-      const matchesGrade = gradeFilter === 'All Grades' || student.classGrade === gradeFilter
-      const matchesSection = sectionFilter === 'All Sections' || student.section === sectionFilter
+    const filtered = results.filter(s => {
+      const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.rollNo.toLowerCase().includes(search.toLowerCase())
+      const matchesGrade = gradeFilter === 'All Grades' || s.classGrade === gradeFilter
+      const matchesSection = sectionFilter === 'All Sections' || s.section === sectionFilter
       return matchesSearch && matchesGrade && matchesSection
     })
-
-    if (subjectFilter === 'All Subjects') {
-      return filtered
-    }
-
-    const subjectKeyMap: Record<string, keyof ResultRow> = {
-      Mathematics: 'math',
-      English: 'english',
-      Science: 'science',
-      History: 'history',
-    }
-    const subjectKey = subjectKeyMap[subjectFilter] || 'math'
-    return [...filtered].sort((a, b) => {
-      const scoreA = typeof a[subjectKey] === 'number' ? (a[subjectKey] as number) : 0
-      const scoreB = typeof b[subjectKey] === 'number' ? (b[subjectKey] as number) : 0
-      return scoreB - scoreA
-    })
+    if (subjectFilter === 'All Subjects') return filtered
+    const keyMap: Record<string, keyof ResultRow> = { Mathematics: 'math', English: 'english', Science: 'science', History: 'history' }
+    const key = keyMap[subjectFilter] || 'math'
+    return [...filtered].sort((a, b) => ((b[key] as number) || 0) - ((a[key] as number) || 0))
   }, [results, search, gradeFilter, sectionFilter, subjectFilter])
-
-  const now = new Date()
-  const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
-  const academicYearLabel = `${academicStartYear}-${academicStartYear + 1}`
 
   const totalPages = Math.max(1, Math.ceil(filteredResults.length / perPage))
   const currentPage = Math.min(page, totalPages)
   const startIndex = (currentPage - 1) * perPage
   const paginatedResults = filteredResults.slice(startIndex, startIndex + perPage)
 
-  const averagePercentage =
-    filteredResults.reduce((sum, student) => sum + student.percentage, 0) /
-    (filteredResults.length || 1)
-  const topStudent = filteredResults.reduce<ResultRow | null>((top, student) => {
-    if (!top || student.percentage > top.percentage) return student
-    return top
-  }, null)
-  const passRate =
-    (filteredResults.filter((student) => student.percentage >= 50).length /
-      (filteredResults.length || 1)) *
-    100
-
-  const gradeCounts = filteredResults.reduce<Record<string, number>>((acc, student) => {
-    acc[student.grade] = (acc[student.grade] || 0) + 1
-    return acc
-  }, {})
-
-  const subjectAverages = {
-    Mathematics:
-      filteredResults.reduce((sum, student) => sum + student.math, 0) /
-      (filteredResults.length || 1),
-    English:
-      filteredResults.reduce((sum, student) => sum + student.english, 0) /
-      (filteredResults.length || 1),
-    Science:
-      filteredResults.reduce((sum, student) => sum + student.science, 0) /
-      (filteredResults.length || 1),
-    History:
-      filteredResults.reduce((sum, student) => sum + student.history, 0) /
-      (filteredResults.length || 1),
-  }
-
-  const topPerformers = [...filteredResults]
-    .sort((a, b) => b.percentage - a.percentage)
-    .slice(0, 3)
-  const needsSupport = [...filteredResults]
-    .sort((a, b) => a.percentage - b.percentage)
-    .slice(0, 2)
-
-  const handlePageChange = (nextPage: number) => {
-    setPage(Math.min(Math.max(nextPage, 1), totalPages))
-  }
+  const averagePercentage = filteredResults.reduce((s, r) => s + r.percentage, 0) / (filteredResults.length || 1)
+  const topStudent = filteredResults.reduce<ResultRow | null>((top, s) => (!top || s.percentage > top.percentage) ? s : top, null)
+  const passRate = (filteredResults.filter(s => s.percentage >= 50).length / (filteredResults.length || 1)) * 100
+  const gradeCounts = filteredResults.reduce<Record<string, number>>((acc, s) => { acc[s.grade] = (acc[s.grade] || 0) + 1; return acc }, {})
+  const subjectAverages = { Mathematics: filteredResults.reduce((s, r) => s + r.math, 0) / (filteredResults.length || 1), English: filteredResults.reduce((s, r) => s + r.english, 0) / (filteredResults.length || 1), Science: filteredResults.reduce((s, r) => s + r.science, 0) / (filteredResults.length || 1), History: filteredResults.reduce((s, r) => s + r.history, 0) / (filteredResults.length || 1) }
+  const topPerformers = [...filteredResults].sort((a, b) => b.percentage - a.percentage).slice(0, 3)
+  const needsSupport = [...filteredResults].sort((a, b) => a.percentage - b.percentage).slice(0, 2)
 
   const handleSelectStudent = (studentId: number | '') => {
     setSelectedStudentId(studentId)
-    if (!studentId) {
-      setFormData((prev) => ({
-        ...prev,
-        rollNo: '',
-        name: '',
-        classGrade: '',
-        section: '',
-      }))
-      return
-    }
-    const match = students.find((student) => student.id === Number(studentId))
-    if (!match) return
-    setFormData((prev) => ({
-      ...prev,
-      rollNo: match.rollNumber,
-      name: match.name,
-      classGrade: match.grade,
-      section: match.section,
-    }))
+    if (!studentId) { setFormData(p => ({ ...p, rollNo: '', name: '', classGrade: '', section: '' })); return }
+    const match = students.find(s => s.id === Number(studentId))
+    if (match) setFormData(p => ({ ...p, rollNo: match.roll_number || '', name: match.name, classGrade: match.grade || '', section: match.section || '' }))
   }
 
-  const calculateGrade = (percentage: number) => {
-    if (percentage >= 90) return 'A+'
-    if (percentage >= 80) return 'A'
-    if (percentage >= 70) return 'B'
-    if (percentage >= 60) return 'C'
-    return 'D'
-  }
-
-  const calculateRemarks = (percentage: number) => {
-    if (percentage >= 90) return 'Excellent'
-    if (percentage >= 80) return 'Strong performance'
-    if (percentage >= 70) return 'Satisfactory'
-    if (percentage >= 60) return 'Average'
-    return 'Needs improvement'
-  }
-
-  const parseScore = (value: string) => {
-    const score = Number.parseFloat(value)
-    if (Number.isNaN(score)) return 0
-    return Math.min(Math.max(score, 0), 100)
-  }
-
-  const handleSaveResult = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setFormError('')
-    if (!formData.rollNo || !formData.classGrade || !formData.section) return
-    const matchedStudent = students.find(
-      (student) => student.rollNumber.toLowerCase() === formData.rollNo.trim().toLowerCase()
-    )
-    if (!matchedStudent) {
-      setFormError('Select a registered student to record results.')
-      return
-    }
-
-    const math = parseScore(formData.math)
-    const english = parseScore(formData.english)
-    const science = parseScore(formData.science)
-    const history = parseScore(formData.history)
-    const total = math + english + science + history
-    const percentage = Number((total / 4).toFixed(1))
-    const grade = calculateGrade(percentage)
-    const remarks = calculateRemarks(percentage)
-    const rollNo = matchedStudent.rollNumber
-    const name = matchedStudent.name
-    const classGrade = matchedStudent.grade
-    const section = matchedStudent.section
-
-    if (editingId) {
-      setResults((prev) =>
-        prev.map((row) =>
-          row.id === editingId
-            ? {
-                ...row,
-                rollNo,
-                name,
-                classGrade,
-                section,
-                math,
-                english,
-                science,
-                history,
-                total,
-                percentage,
-                grade,
-                remarks,
-              }
-            : row
-        )
-      )
-    } else {
-      const nextId = results.length ? Math.max(...results.map((row) => row.id)) + 1 : 1
-      setResults((prev) => [
-        {
-          id: nextId,
-          rollNo,
-          name,
-          classGrade,
-          section,
-          math,
-          english,
-          science,
-          history,
-          total,
-          percentage,
-          grade,
-          remarks,
-        },
-        ...prev,
-      ])
-    }
-
-    setFormData({
-      rollNo: '',
-      name: '',
-      classGrade: '',
-      section: '',
-      math: '',
-      english: '',
-      science: '',
-      history: '',
-    })
-    setEditingId(null)
-    setSelectedStudentId('')
-    setShowForm(false)
-    setPage(1)
+  const handleSaveResult = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); setFormError('')
+    if (!selectedStudentId) { setFormError('Please select a student.'); return }
+    const math = parseScore(formData.math), english = parseScore(formData.english), science = parseScore(formData.science), history = parseScore(formData.history)
+    setSubmitting(true)
+    try {
+      if (editingId) {
+        await apiFetch(`/results/${editingId}`, { method: 'PUT', body: JSON.stringify({ math_score: math, english_score: english, science_score: science, history_score: history }) })
+      } else {
+        await apiFetch('/results', { method: 'POST', body: JSON.stringify({ student_id: selectedStudentId, math_score: math, english_score: english, science_score: science, history_score: history }) })
+      }
+      setFormData({ rollNo: '', name: '', classGrade: '', section: '', math: '', english: '', science: '', history: '' })
+      setSelectedStudentId(''); setShowForm(false); setEditingId(null); setPage(1)
+      await fetchData()
+    } catch (err: any) { setFormError(err.message || 'Failed to save result.') }
+    finally { setSubmitting(false) }
   }
 
   const handleEditResult = (id: number) => {
-    const result = results.find((row) => row.id === id)
-    if (!result) return
-    const match = students.find(
-      (student) => student.rollNumber.toLowerCase() === result.rollNo.toLowerCase()
-    )
-    setSelectedStudentId(match ? match.id : '')
-    setFormData({
-      rollNo: result.rollNo,
-      name: result.name,
-      classGrade: result.classGrade,
-      section: result.section,
-      math: String(result.math),
-      english: String(result.english),
-      science: String(result.science),
-      history: String(result.history),
-    })
-    setEditingId(id)
-    setShowForm(true)
+    const result = results.find(r => r.id === id); if (!result) return
+    const match = students.find(s => s.roll_number === result.rollNo)
+    setSelectedStudentId(match?.id || '')
+    setFormData({ rollNo: result.rollNo, name: result.name, classGrade: result.classGrade, section: result.section, math: String(result.math), english: String(result.english), science: String(result.science), history: String(result.history) })
+    setEditingId(id); setShowForm(true)
   }
 
-  const handleRemoveResult = (id: number) => {
-    setResults((prev) => prev.filter((row) => row.id !== id))
+  const handleRemoveResult = async (id: number) => {
+    if (!confirm('Delete this result?')) return
+    try { await apiFetch(`/results/${id}`, { method: 'DELETE' }); setResults(prev => prev.filter(r => r.id !== id)) }
+    catch (err: any) { alert(err.message) }
   }
+
+  const now = new Date()
+  const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
 
   return (
     <DashboardShell>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Exam Results Management
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage and track student exam performance
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Exam Results Management</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and track student exam performance</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowForm((prev) => !prev)}
-            className="btn-primary flex items-center gap-2"
-          >
-            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            {showForm ? 'Close Form' : 'Add Result'}
-          </button>
+          <div className="flex gap-3">
+            <button type="button" onClick={fetchData} className="btn-secondary flex items-center gap-2"><RefreshCw className="h-4 w-4" /> Refresh</button>
+            <button type="button" onClick={() => setShowForm(p => !p)} className="btn-primary flex items-center gap-2">
+              {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}{showForm ? 'Close Form' : 'Add Result'}
+            </button>
+          </div>
         </div>
 
         {showForm && (
           <form onSubmit={handleSaveResult} className="card space-y-4">
-            {formError && (
-              <p className="text-sm text-error-600 dark:text-error-400">{formError}</p>
-            )}
-            {students.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                No registered students yet. Add students before recording results.
-              </p>
-            )}
+            {formError && <p className="text-sm text-red-600 dark:text-red-400">{formError}</p>}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="md:col-span-2">
                 <label className="text-sm text-gray-600 dark:text-gray-400">Student *</label>
-                <select
-                  className="input-field mt-1"
-                  value={selectedStudentId}
-                  onChange={(event) =>
-                    handleSelectStudent(event.target.value ? Number(event.target.value) : '')
-                  }
-                  required
-                >
+                <select className="input-field mt-1" value={selectedStudentId} onChange={e => handleSelectStudent(e.target.value ? Number(e.target.value) : '')} required>
                   <option value="">Select student</option>
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} (Roll {student.rollNumber})
-                    </option>
-                  ))}
+                  {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.roll_number || 'No roll'})</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Roll No *</label>
-                <input
-                  type="text"
-                  className="input-field mt-1"
-                  value={formData.rollNo}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, rollNo: event.target.value }))}
-                  required
-                  readOnly
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Student Name *</label>
-                <input
-                  type="text"
-                  className="input-field mt-1"
-                  value={formData.name}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                  required
-                  readOnly
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Grade *</label>
-                <select
-                  className="input-field mt-1"
-                  value={formData.classGrade}
-                  onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, classGrade: event.target.value }))
-                  }
-                  required
-                  disabled
-                >
-                  <option value="">Select</option>
-                  <option>Grade 7</option>
-                  <option>Grade 8</option>
-                  <option>Grade 9</option>
-                  <option>Grade 10</option>
-                  <option>Grade 11</option>
-                  <option>Grade 12</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-gray-600 dark:text-gray-400">Section *</label>
-                <select
-                  className="input-field mt-1"
-                  value={formData.section}
-                  onChange={(event) =>
-                    setFormData((prev) => ({ ...prev, section: event.target.value }))
-                  }
-                  required
-                  disabled
-                >
-                  <option value="">Select</option>
-                  <option>A</option>
-                  <option>B</option>
-                  <option>C</option>
-                </select>
-              </div>
-              {[
-                { label: 'Math', key: 'math' },
-                { label: 'English', key: 'english' },
-                { label: 'Science', key: 'science' },
-                { label: 'History', key: 'history' },
-              ].map((subject) => (
-                <div key={subject.key}>
-                  <label className="text-sm text-gray-600 dark:text-gray-400">{subject.label}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="input-field mt-1"
-                    value={(formData as Record<string, string>)[subject.key]}
-                    onChange={(event) =>
-                      setFormData((prev) => ({ ...prev, [subject.key]: event.target.value }))
-                    }
-                  />
+              <div><label className="text-sm text-gray-600 dark:text-gray-400">Roll No</label><input type="text" className="input-field mt-1" value={formData.rollNo} readOnly /></div>
+              <div><label className="text-sm text-gray-600 dark:text-gray-400">Grade</label><input type="text" className="input-field mt-1" value={formData.classGrade} readOnly /></div>
+              {[{ label: 'Math', key: 'math' }, { label: 'English', key: 'english' }, { label: 'Science', key: 'science' }, { label: 'History', key: 'history' }].map(sub => (
+                <div key={sub.key}>
+                  <label className="text-sm text-gray-600 dark:text-gray-400">{sub.label}</label>
+                  <input type="number" min="0" max="100" className="input-field mt-1" value={(formData as any)[sub.key]} onChange={e => setFormData(p => ({ ...p, [sub.key]: e.target.value }))} />
                 </div>
               ))}
             </div>
             <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => {
-                  setShowForm(false)
-                  setEditingId(null)
-                  setSelectedStudentId('')
-                }}
-              >
-                Cancel
-              </button>
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Update Result' : 'Save Result'}
-              </button>
+              <button type="button" className="btn-secondary" onClick={() => { setShowForm(false); setEditingId(null); setSelectedStudentId('') }}>Cancel</button>
+              <button type="submit" disabled={submitting} className="btn-primary disabled:opacity-60">{submitting ? 'Saving...' : editingId ? 'Update Result' : 'Save Result'}</button>
             </div>
           </form>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Average Score</h3>
-              <TrendingUp className="h-5 w-5 text-success-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {averagePercentage.toFixed(1)}%
-            </p>
-            <p className="text-sm text-success-600 dark:text-success-400 mt-1">
-              {filteredResults.length} students tracked
-            </p>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Highest Score</h3>
-              <Award className="h-5 w-5 text-warning-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {topStudent ? `${topStudent.percentage}%` : '--'}
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {topStudent ? topStudent.name : 'No data'}
-            </p>
-          </div>
-
-          <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Pass Percentage</h3>
-              <Target className="h-5 w-5 text-primary-500" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {passRate.toFixed(0)}%
-            </p>
-            <p className="text-sm text-success-600 dark:text-success-400 mt-1">
-              {Math.max(passRate - 85, 0).toFixed(0)}% above 85% target
-            </p>
-          </div>
-
-          <div className="card">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold mb-2">Exam Details</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Academic Year:</span>
-                  <span className="font-medium">{academicYearLabel}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Grade/Class:</span>
-                  <span className="font-medium">
-                    {gradeFilter === 'All Grades' ? 'All Grades' : gradeFilter}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Subject:</span>
-                  <span className="font-medium">{subjectFilter}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div className="card"><div className="flex items-center justify-between mb-4"><h3 className="text-lg font-semibold">Average Score</h3><TrendingUp className="h-5 w-5 text-success-500" /></div><p className="text-3xl font-bold">{averagePercentage.toFixed(1)}%</p><p className="text-sm text-success-600 mt-1">{filteredResults.length} students</p></div>
+          <div className="card"><div className="flex items-center justify-between mb-4"><h3 className="text-lg font-semibold">Highest Score</h3><Award className="h-5 w-5 text-warning-500" /></div><p className="text-3xl font-bold">{topStudent ? `${topStudent.percentage}%` : '--'}</p><p className="text-sm text-gray-600 mt-1">{topStudent?.name || 'No data'}</p></div>
+          <div className="card"><div className="flex items-center justify-between mb-4"><h3 className="text-lg font-semibold">Pass Rate</h3><Target className="h-5 w-5 text-primary-500" /></div><p className="text-3xl font-bold">{passRate.toFixed(0)}%</p><p className="text-sm text-success-600 mt-1">Target: 85%</p></div>
+          <div className="card"><h3 className="text-lg font-semibold mb-2">Exam Details</h3><div className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-gray-600">Year:</span><span className="font-medium">{academicStartYear}-{academicStartYear + 1}</span></div><div className="flex justify-between"><span className="text-gray-600">Grade:</span><span className="font-medium">{gradeFilter}</span></div><div className="flex justify-between"><span className="text-gray-600">Subject:</span><span className="font-medium">{subjectFilter}</span></div></div></div>
         </div>
 
         <div className="card">
+          {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between"><span>{error}</span><button onClick={fetchData} className="underline">Retry</button></div>}
           <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                placeholder="Search student..."
-                className="input-field"
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value)
-                  setPage(1)
-                }}
-              />
-            </div>
-            <select
-              className="input-field flex-1 min-w-[150px]"
-              value={gradeFilter}
-              onChange={(event) => {
-                setGradeFilter(event.target.value)
-                setPage(1)
-              }}
-            >
-              <option>All Grades</option>
-              <option>Grade 7</option>
-              <option>Grade 8</option>
-              <option>Grade 9</option>
-              <option>Grade 10</option>
-              <option>Grade 11</option>
-              <option>Grade 12</option>
+            <div className="flex-1 min-w-[200px]"><input type="text" placeholder="Search student..." className="input-field" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} /></div>
+            <select className="input-field flex-1 min-w-[150px]" value={gradeFilter} onChange={e => { setGradeFilter(e.target.value); setPage(1) }}>
+              <option>All Grades</option>{['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'].map(g => <option key={g}>{g}</option>)}
             </select>
-            <select
-              className="input-field flex-1 min-w-[150px]"
-              value={sectionFilter}
-              onChange={(event) => {
-                setSectionFilter(event.target.value)
-                setPage(1)
-              }}
-            >
-              <option>All Sections</option>
-              <option>Section A</option>
-              <option>Section B</option>
-              <option>Section C</option>
+            <select className="input-field flex-1 min-w-[150px]" value={sectionFilter} onChange={e => { setSectionFilter(e.target.value); setPage(1) }}>
+              <option>All Sections</option>{['A','B','C'].map(s => <option key={s}>Section {s}</option>)}
             </select>
-            <select
-              className="input-field flex-1 min-w-[150px]"
-              value={subjectFilter}
-              onChange={(event) => {
-                setSubjectFilter(event.target.value)
-                setPage(1)
-              }}
-            >
-              <option>All Subjects</option>
-              <option>Mathematics</option>
-              <option>English</option>
-              <option>Science</option>
-              <option>History</option>
+            <select className="input-field flex-1 min-w-[150px]" value={subjectFilter} onChange={e => { setSubjectFilter(e.target.value); setPage(1) }}>
+              <option>All Subjects</option>{['Mathematics','English','Science','History'].map(s => <option key={s}>{s}</option>)}
             </select>
           </div>
 
-          <ResultsTable
-            results={paginatedResults}
-            onEdit={handleEditResult}
-            onRemove={handleRemoveResult}
-          />
-
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Showing {filteredResults.length === 0 ? 0 : startIndex + 1}-
-              {Math.min(startIndex + perPage, filteredResults.length)} of{' '}
-              {filteredResults.length} students
-            </p>
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                <button
-                  key={pageNumber}
-                  type="button"
-                  onClick={() => handlePageChange(pageNumber)}
-                  className={`px-3 py-1 rounded text-sm ${
-                    pageNumber === currentPage
-                      ? 'bg-primary-600 text-white'
-                      : 'border border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          {loading ? (
+            <div className="text-center py-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3"></div><p className="text-gray-500">Loading results...</p></div>
+          ) : (
+            <>
+              <ResultsTable results={paginatedResults} onEdit={handleEditResult} onRemove={handleRemoveResult} />
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Showing {filteredResults.length === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + perPage, filteredResults.length)} of {filteredResults.length} students</p>
+                <div className="flex space-x-2">
+                  <button type="button" onClick={() => setPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50">Previous</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => <button key={n} type="button" onClick={() => setPage(n)} className={`px-3 py-1 rounded text-sm ${n === currentPage ? 'bg-primary-600 text-white' : 'border border-gray-300 dark:border-gray-600'}`}>{n}</button>)}
+                  <button type="button" onClick={() => setPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-sm disabled:opacity-50">Next</button>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div>
-              <h4 className="font-semibold mb-4">Grade Distribution</h4>
-              <div className="space-y-2">
-                {[
-                  { grade: 'A+', color: 'bg-success-500' },
-                  { grade: 'A', color: 'bg-success-400' },
-                  { grade: 'B', color: 'bg-warning-400' },
-                  { grade: 'C', color: 'bg-warning-500' },
-                  { grade: 'D', color: 'bg-error-500' },
-                ].map((item) => {
-                  const count = gradeCounts[item.grade] || 0
-                  return (
-                  <div key={item.grade} className="flex items-center justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">{item.grade}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`${item.color} h-2 rounded-full`}
-                          style={{
-                            width: `${filteredResults.length ? (count / filteredResults.length) * 100 : 0}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium">{count}</span>
-                    </div>
-                  </div>
-                )})}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Subject Performance</h4>
-              <div className="space-y-2">
-                {Object.entries(subjectAverages).map(([subject, average]) => (
-                  <div key={subject} className="flex items-center justify-between">
-                    <span className="text-gray-700 dark:text-gray-300">{subject}</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div
-                          className="bg-primary-500 h-2 rounded-full"
-                          style={{ width: `${average}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium">{average.toFixed(0)}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Performance Highlights</h4>
-              <div className="space-y-4">
-                <div>
-                  <h5 className="text-sm font-medium text-success-600 dark:text-success-400 mb-2">
-                    TOP PERFORMERS
-                  </h5>
-                  <ul className="space-y-1">
-                    {topPerformers.map((student) => (
-                      <li key={student.id} className="text-sm">
-                        {student.name}: {student.percentage}%
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-error-600 dark:text-error-400 mb-2">
-                    NEEDS SUPPORT
-                  </h5>
-                  <ul className="space-y-1">
-                    {needsSupport.map((student) => (
-                      <li key={student.id} className="text-sm">
-                        {student.name}: {student.percentage}%
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
+            <div><h4 className="font-semibold mb-4">Grade Distribution</h4><div className="space-y-2">{[{grade:'A+',color:'bg-success-500'},{grade:'A',color:'bg-success-400'},{grade:'B',color:'bg-warning-400'},{grade:'C',color:'bg-warning-500'},{grade:'D',color:'bg-error-500'}].map(item => { const count = gradeCounts[item.grade] || 0; return <div key={item.grade} className="flex items-center justify-between"><span className="text-gray-700 dark:text-gray-300">{item.grade}</span><div className="flex items-center space-x-2"><div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div className={`${item.color} h-2 rounded-full`} style={{ width: `${filteredResults.length ? (count/filteredResults.length)*100 : 0}%` }}></div></div><span className="text-sm font-medium">{count}</span></div></div> })}</div></div>
+            <div><h4 className="font-semibold mb-4">Subject Performance</h4><div className="space-y-2">{Object.entries(subjectAverages).map(([subject, avg]) => <div key={subject} className="flex items-center justify-between"><span className="text-gray-700 dark:text-gray-300">{subject}</span><div className="flex items-center space-x-2"><div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div className="bg-primary-500 h-2 rounded-full" style={{ width: `${avg}%` }}></div></div><span className="text-sm font-medium">{avg.toFixed(0)}%</span></div></div>)}</div></div>
+            <div><h4 className="font-semibold mb-4">Performance Highlights</h4><div className="space-y-4"><div><h5 className="text-sm font-medium text-success-600 mb-2">TOP PERFORMERS</h5><ul className="space-y-1">{topPerformers.map(s => <li key={s.id} className="text-sm">{s.name}: {s.percentage}%</li>)}</ul></div><div><h5 className="text-sm font-medium text-error-600 mb-2">NEEDS SUPPORT</h5><ul className="space-y-1">{needsSupport.map(s => <li key={s.id} className="text-sm">{s.name}: {s.percentage}%</li>)}</ul></div></div></div>
           </div>
         </div>
       </div>

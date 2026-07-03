@@ -57,3 +57,5 @@ yarn-error.log*
 
 # Local Netlify folder
 .netlifyvenv/
+__pycache__/
+*.pyc

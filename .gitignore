@@ -56,4 +56,4 @@ yarn-error.log*
 *.tsbuildinfo
 
 # Local Netlify folder
-.netlify
+.netlifyvenv/

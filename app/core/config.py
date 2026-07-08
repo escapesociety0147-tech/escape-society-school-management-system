@@ -11,8 +11,9 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
+from typing import Annotated
 from pydantic import SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy import URL
 
 INSECURE_SECRET_VALUES = {
@@ -76,7 +77,7 @@ class Settings(BaseSettings):
     DB_PASSWORD: SecretStr
 
     # --- CORS ---
-    BACKEND_CORS_ORIGINS: list[str] = []
+    BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = []
 
     # --- Logging ---
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"

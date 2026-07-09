@@ -1,4 +1,89 @@
-fastapi
-uvicorn
-sqlalchemy
-pymysql
+# ==========================
+# FastAPI Framework
+# ==========================
+
+fastapi>=0.116.0
+# Modern async web framework
+
+uvicorn[standard]>=0.35.0
+# ASGI server for local development and production
+
+# ==========================
+# Database
+# ==========================
+
+sqlalchemy>=2.0.40
+# ORM and SQL toolkit
+
+alembic>=1.16.0
+# Database migrations
+
+pymysql>=1.1.1
+# MySQL database driver
+
+# ==========================
+# Configuration
+# ==========================
+
+pydantic>=2.11.0
+# Data validation (FastAPI dependency)
+
+pydantic-settings>=2.10.0
+# Environment variable and settings management
+
+python-dotenv>=1.1.0
+# Load .env files during development
+
+# ==========================
+# Authentication & Security
+# ==========================
+
+pwdlib[argon2]>=0.2.1
+# Password hashing using Argon2 (recommended over bcrypt for new projects)
+
+pyjwt>=2.10.0
+# Encode and verify JWT access tokens
+
+# ==========================
+# Request Handling
+# ==========================
+
+python-multipart>=0.0.20
+# Required for file uploads and multipart form data
+
+email-validator>=2.2.0
+# Email validation for Pydantic EmailStr
+
+# ==========================
+# Utilities
+# ==========================
+
+orjson>=3.11.0
+# High-performance JSON serialization
+
+# ==========================
+# Testing
+# ==========================
+
+pytest>=8.4.0
+# Test framework
+
+pytest-asyncio>=1.1.0
+# Async test support
+
+httpx>=0.28.0
+pytest-cov>=6.2.0
+# Test coverage reporting
+
+# ==========================
+# Development
+# ==========================
+
+ruff>=0.12.0
+# Fast linter and formatter
+
+mypy>=1.17.0
+# Static type checking
+
+pre-commit>=4.3.0
+# Git pre-commit hooks for consistent code quality

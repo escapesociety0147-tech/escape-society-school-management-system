@@ -1,229 +1,132 @@
-## School Management System (FastAPI + Docker)
+# Escape Society School Management System
 
-A backend School Management System built with FastAPI and MySQL, fully containerized using Docker and managed via Docker Compose and Makefile for simplified development and deployment workflows.
+A multi-role, multi-tenant school management system. The frontend (Next.js App Router) is fully built with mock/local data; the backend (FastAPI) is being built out to replace that mock layer with a real, persistent, multi-tenant API.
 
-### Project Status:
-This project is currently in early development.
-Only the base application and index endpoint are active.
-Core school management features are planned and listed below.
+## Project Status
 
-### Tech Stack
+**Frontend:** Fully built UI for admin, teacher, parent, and student portals. Currently backed by browser `localStorage`, not a real API.
 
-1. Backend: FastAPI (Python)
+**Backend:** Phase 0 (foundation) complete and verified:
+- Application configuration with fail-fast production validation (`app/core/config.py`)
+- SQLAlchemy engine, session, and declarative base (`app/db/`)
+- Working Docker Compose stack (FastAPI + MySQL), verified end-to-end from a clean volume
+- Single index endpoint (`GET /`) proving the app runs
 
-2. Database: MySQL 8.4
+Not yet implemented: authentication, database models, Alembic migrations, and all domain business logic (students, teachers, attendance, fees, etc.). See `PRD.md` for the full specification.
 
-3. ORM: SQLAlchemy (planned)
+## Tech Stack
 
-4. Containerization: Docker & Docker Compose
+**Frontend:** Next.js (App Router), TypeScript, Tailwind CSS
 
-5. Process Management: Uvicorn
+**Backend:**
+- FastAPI (Python 3.11+)
+- SQLAlchemy 2.x (ORM)
+- Alembic (migrations - not yet initialized)
+- MySQL 8.4
+- Pydantic v2 / pydantic-settings (configuration)
+- PyJWT + server-side session table (planned auth architecture - see PRD)
+- pwdlib (Argon2 password hashing)
+- Docker & Docker Compose
 
-6. Automation: Makefile
+## Branch Strategy
 
-7. Environment Config: .env file
+- `main` - stable, always-working state. Reflects completed, verified milestones.
+- `dev` - active development branch. All feature work happens on short-lived branches off `dev`, merged back via PR, then periodically merged into `main`.
 
-#### Project Features (Current)
+Feature branches follow `feature/<short-description>` and are deleted after merging.
 
-##### Implemented
-
-1. Dockerized FastAPI application
-
-2. MySQL database container with persistent volume
-
-3. Health checks for database readiness
-
-3. Environment-based configuration
-
-4. Makefile commands for container lifecycle
-
-5. Index (/) endpoint for service availability check
-
-### Planned Features (In Progress / Roadmap)
-
-The following features are not yet implemented, but planned for upcoming releases:
-
-#### Student Management
-
-1. Student registration
-
-2. Student profile management
-
-3. Class and grade assignment
-
-#### Teacher Management
-
-1. Teacher profiles
-
-2. Subject assignments
-
-3. Class allocations
-
-#### Attendance Management
-
-1. Student attendance tracking
-
-2. Daily and term-based attendance records
-
-3. Attendance reports
-
-#### Examination & Results
-
-1. Exam creation
-
-2. Student exam results
-
-3. Performance summaries
-
-#### Fees Management
-
-1. Fees structure configuration
-
-2. Payment records
-
-3. Outstanding balance tracking
-
-#### Authentication & Authorization Features 
-1. Auth Middleware to protect API endpoints
-2. JWT Tokens for stateless authentication
-3. OAuth (Google, Facebook, Instagram) for easy third-party registration/login
-
-### Container Architecture
-
-The application runs using two Docker services:
-
-#### Web Service (FastAPI)
-
-1. Runs the FastAPI application
-
-2. Exposed on port 8000
-
-3. Uses bind mount for live code updates (development)
-
-4. Depends on database health check before startup
-
-#### Database Service (MySQL)
-
-1. MySQL 8.4 official image
-
-2. Persistent storage using Docker volumes
-
-3. Health check ensures readiness before app starts
-
-
-### Project Structure
-
-```bash
+## Project Structure
 .
-├── app/
-│   ├── main.py
-│   └── ...
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-├── Makefile
-├── .env
-└── README.md
+|-- app/                     # Shared root: Next.js routes AND FastAPI backend
+|   |-- main.py                # FastAPI entry point
+|   |-- validation.py
+|   |-- core/
+|   |   -- config.py            # Settings (env-driven, validated) |   |-- db/ |   |   |-- base.py              # SQLAlchemy DeclarativeBase |   |   -- session.py           # Engine, session factory, get_db()
+|   |-- api/v1/                  # (empty - routers land here in Phase 1+)
+|   |-- models/                   # (empty - SQLAlchemy models land here)
+|   |-- schemas/                   # (empty - Pydantic schemas land here)
+|   |-- services/, repositories/, dependencies/, middleware/, utils/
+|   -- <role>/page.tsx           # Next.js frontend routes (admin/teacher/parent/student) |-- components/               # Next.js React components |-- lib/                      # Frontend data/state (currently localStorage-backed) |-- types/                    # Shared TypeScript types |-- Dockerfile                 # Backend image |-- docker-compose.yml          # web (FastAPI) + database (MySQL) services |-- .dockerignore |-- requirements.txt            # Backend Python dependencies |-- package.json                 # Frontend dependencies |-- Makefile                     # Docker Compose shortcuts (see below) |-- PRD.md                      # Full product/backend specification -- README.md
 
-```
-### Environment Configuration
-```.env
-DB_HOST=db 
-DB_DATABASE=school-management-db
-DB_USER=your_username
-DB_PASSWORD=your_secret_password
-MYSQL_PORT=3306
-DB_CONNECTION=mysql
-DB_DRIVER=pymysql
+> Note: `app/` intentionally serves double duty as both the Next.js App Router root and the FastAPI backend package root. This was a deliberate decision to avoid disruptive repo restructuring while the backend is being built.
 
-DATABASE_URL=mysql+pymysql://your_username:your_secret_password@db:3306/school-management-db
+## Environment Configuration
 
+Copy `.env.example` to `.env` and fill in real values. Key variables:
+APP_NAME=Escape Society School Management System
+APP_VERSION=1.0.0
+APP_ENV=development
+DEBUG=true
+API_V1_PREFIX=/api/v1
+SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_urlsafe(64))">
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+SESSION_COOKIE_NAME=esm_session
+SESSION_COOKIE_SAMESITE=lax
+SESSION_COOKIE_PATH=/
+SESSION_LIFETIME_MINUTES=10080
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=school_management_db
+DB_USER=esm_dev
+DB_PASSWORD=<your local password>
+BACKEND_CORS_ORIGINS=http://localhost:3000
+LOG_LEVEL=INFO
 
-```
+`APP_ENV=production` triggers fail-fast validation: the app refuses to start with a missing/placeholder `SECRET_KEY`, `DB_PASSWORD`, or `DEBUG=true`.
 
-### Available Endpoints
-```
-Health / Index Endpoint
-GET /
+## Running Locally with Docker
+docker compose up -d
 
-Response:
+This starts both services: `database` (MySQL, with a healthcheck) and `web` (FastAPI, waits for `database` to be healthy before starting). The `web` service reaches `database` via Docker's internal DNS (`DB_HOST=database`, overridden automatically in `docker-compose.yml` - your local `.env`'s `DB_HOST=localhost` is for running the app directly on your machine, not inside Docker).
 
-{
-  "message": "School Management System API is running"
-}
+Check status:
+docker compose ps
 
-```
+View logs:
+docker compose logs web --tail 50
+docker compose logs database --tail 50
 
-### How to Run (Tester Instructions)
-1. **Install Docker (if not already installed):**
-   a. Docker Desktop: https://www.docker.com/products/docker-desktop/ (Windows/Mac)
-   b. sudo apt install docker.io docker-compose (Linux)
-2. **Clone the repository:**
-   ```bash
-   git clone <repo-url>
-   cd <repo-folder>
-   ```
-3. Create a .env file with the details in the Environment configuration above and update DB_USER and DB_PASSWORD    if needed.
-4. **Makefile Commands**
+Stop:
+docker compose down          # keeps data
+docker compose down -v       # also wipes the database volume
 
-  The project includes a Makefile to simplify container management.
+## Makefile Shortcuts
+make up         # start containers (detached)
+make up-build   # rebuild images, then start containers
+make down       # stop containers (keeps data)
+make down-v     # stop containers and remove the database volume
+make logs       # follow logs for all services
+make logs-web   # follow FastAPI logs only
+make logs-db    # follow MySQL logs only
+make run        # rebuild, start, and follow FastAPI logs in one step
 
-  ```Makefile
-  make up         # starts containers
-  make up-build   # starts containers with rebuild
-  make down       # stops containers
-  make down-v     # stops containers and removes persisted data
-  make logs       # shows the output (stdout and stderr) of a running or stopped container
-  make logs-db    # show the output of MYSQL logs
-  make logs-db    # show the output of FastAPI logs
-  make run        # Quick start and watch logs: rebuild, start, and follow FastAPI logs
-  ```
-5. Access the API:
-   Open your browser or use Postman to test:
-   
-   http://localhost:8000/
+> **Note:** These targets currently call `sudo docker-compose ...` (the legacy standalone CLI). This works on Linux with `docker-compose` installed, but will not run as-is on Windows PowerShell (no `sudo`) or on machines that only have the modern `docker compose` plugin (bundled with Docker Desktop) rather than the legacy binary. Until the Makefile is updated, running the equivalent `docker compose ...` commands directly (as shown above) is the more portable option.
 
-### Development Notes
+## Running the Backend Locally (without Docker)
+python3 -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
-1. Code changes are reflected instantly using Docker bind mounts
+Requires a MySQL instance reachable at whatever `DB_HOST`/`DB_PORT` your `.env` specifies (a local install, or a Docker container with its port published to the host).
 
-2. Database readiness is handled via Docker health checks
+## Available Endpoints
+GET /?school_name=<name>
+Returns a running-status message. This is a placeholder from Phase 0; real API routes will live under `/api/v1` once Phase 1 begins.
 
-3. The project follows production-ready container patterns, even at early stages
+## Roadmap
 
-4. Future features will be added incrementally with proper migrations
+- **Phase 1 (next):** `schools` and `users` models, `user_sessions` table, Alembic migrations, authentication (session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern.
+- **Phase 2:** Academic core - classes, assignments, gradebook, attendance, results.
+- **Phase 3:** Operations core - fees/payments, events, documents, messaging, notifications.
+- **Phase 4:** Admin ops - reports, scheduling, support tickets, audit logs.
 
-### Production Considerations
+Full detail in `PRD.md`.
 
-For production deployment:
+## Contributing
 
-1. Remove bind mounts
+This project follows a strict workflow: one concept per commit, design decisions discussed before implementation, feature branches off `dev`, PR review before merge. See commit history on `dev` for examples of the expected commit granularity.
 
-2. Disable auto-reload
+## License
 
-3. Use multiple Uvicorn workers
-
-4. Secure environment variables
-
-5. Use migrations (Alembic)
-
-### Project Goals
-
-This project aims to:
-
-1. Demonstrate clean backend architecture
-
-2. Follow real world containerization best practices
-
-3. Provide a scalable foundation for a full school management system
-
-### Contributing
-
-Contributions, suggestions, and improvements are welcome.
-This project is under active development.
-
-### License
-
-This project is for educational and development purposes.
-License details to be added.
-
+Educational and development purposes. License details to be added.

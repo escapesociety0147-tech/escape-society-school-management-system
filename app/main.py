@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from validation import input_check
+from app.validation import input_check
 
 
 app=FastAPI()

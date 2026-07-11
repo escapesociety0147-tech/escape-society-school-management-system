@@ -53,7 +53,7 @@ def db_session(test_engine):
     """
     connection = test_engine.connect()
     transaction = connection.begin()
-    session = Session(bind=connection)
+    session = Session(bind=connection, join_transaction_mode="create_savepoint")
 
     yield session
 

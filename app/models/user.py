@@ -58,7 +58,7 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, native_enum=True, length=20), nullable=False, index=True
+        Enum(UserRole, values_callable=lambda enum_cls: [e.value for e in enum_cls], native_enum=True, length=20), nullable=False, index=True
     )
 
     created_at: Mapped[datetime] = mapped_column(

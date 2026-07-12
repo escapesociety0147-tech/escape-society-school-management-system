@@ -1,4 +1,3 @@
-
 """
 Persistence tests for the User model.
 
@@ -109,7 +108,7 @@ def test_email_is_required(db_session):
 
 def test_school_id_is_required(db_session):
     """
-    Omitting school_id raises IntegrityError — this is arguably the most
+    Omitting school_id raises IntegrityError - this is arguably the most
     important invariant in a multi-tenant system: no user can exist
     without belonging to exactly one school.
     """
@@ -151,8 +150,12 @@ def test_user_soft_delete_lifecycle(db_session):
     """
     Setting deleted_at excludes the user from an active-only query while
     the row remains physically present and retrievable via an unfiltered
-    query, with the exact timestamp preserved — proving soft delete
-    behaves as intended, not as a hard delete.
+    query, with the persisted timestamp preserved (at whole-second
+    precision - MySQL's DATETIME column has no fractional-seconds
+    precision and rounds sub-second values on insert, and does not
+    persist timezone offset info; the application-level UTC convention
+    documented on School/User's timestamp columns applies here) -
+    proving soft delete behaves as intended, not as a hard delete.
     """
     school = create_school(db_session, "SCH-U00004")
 
@@ -168,7 +171,7 @@ def test_user_soft_delete_lifecycle(db_session):
     ).all()
     assert len(active_users) == 1
 
-    deleted_time = datetime.now(timezone.utc)
+    deleted_time = datetime.now(timezone.utc).replace(microsecond=0)
     user.deleted_at = deleted_time
     db_session.commit()
     db_session.refresh(user)
@@ -183,7 +186,7 @@ def test_user_soft_delete_lifecycle(db_session):
 
     all_users = db_session.scalars(select(User).where(User.id == user.id)).all()
     assert len(all_users) == 1
-    assert all_users[0].deleted_at == deleted_time
+    assert all_users[0].deleted_at.replace(tzinfo=timezone.utc) == deleted_time
 
 
 @pytest.mark.parametrize(

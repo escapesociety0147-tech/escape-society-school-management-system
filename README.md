@@ -6,13 +6,16 @@ A multi-role, multi-tenant school management system. The frontend (Next.js App R
 
 **Frontend:** Fully built UI for admin, teacher, parent, and student portals. Currently backed by browser `localStorage`, not a real API.
 
-**Backend:** Phase 0 (foundation) complete and verified:
+**Backend:** Phase 0 (foundation) complete. Phase 1 (core models) in progress:
 - Application configuration with fail-fast production validation (`app/core/config.py`)
 - SQLAlchemy engine, session, and declarative base (`app/db/`)
 - Working Docker Compose stack (FastAPI + MySQL), verified end-to-end from a clean volume
+- Alembic initialized and wired to app settings
+- `School` model - migrated and tested (4 tests)
+- `User` model - migrated and tested (10 tests), with `school_id` FK, email uniqueness, role enum, and soft delete
 - Single index endpoint (`GET /`) proving the app runs
 
-Not yet implemented: authentication, database models, Alembic migrations, and all domain business logic (students, teachers, attendance, fees, etc.). See `PRD.md` for the full specification.
+Not yet implemented: authentication, sessions, RBAC, and all domain business logic (attendance, fees, etc.). See `PRD.md` for the full specification.
 
 ## Tech Stack
 
@@ -116,7 +119,7 @@ Returns a running-status message. This is a placeholder from Phase 0; real API r
 
 ## Roadmap
 
-- **Phase 1 (next):** `schools` and `users` models, `user_sessions` table, Alembic migrations, authentication (session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern.
+- **Phase 1 (in progress):** `schools` model (done), `users` model (done), `user_passwords` table (next), `user_sessions` table, authentication (session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern, school onboarding endpoint.
 - **Phase 2:** Academic core - classes, assignments, gradebook, attendance, results.
 - **Phase 3:** Operations core - fees/payments, events, documents, messaging, notifications.
 - **Phase 4:** Admin ops - reports, scheduling, support tickets, audit logs.

@@ -13,7 +13,7 @@ from datetime import datetime
 from enum import StrEnum
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import Uuid
 
 from app.db.base import Base
@@ -58,7 +58,9 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, values_callable=lambda enum_cls: [e.value for e in enum_cls], native_enum=True, length=20), nullable=False, index=True
+        Enum(UserRole, values_callable=lambda enum_cls: [e.value for e in enum_cls], native_enum=True, length=20),
+        nullable=False,
+        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -68,6 +70,11 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    sessions: Mapped[list["UserSession"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r} role={self.role.value}>"

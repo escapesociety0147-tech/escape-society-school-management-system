@@ -14,6 +14,7 @@ A multi-role, multi-tenant school management system. The frontend (Next.js App R
 - `School` model - migrated and tested (4 tests)
 - `User` model - migrated and tested (10 tests), with `school_id` FK, email uniqueness, role enum, and soft delete
 - `UserPassword` model - migrated and tested (7 tests), 1:1 shared-PK extension of `User`, `ON DELETE CASCADE` verified
+- `UserSession` model - migrated and tested (10 tests), supports multi-device sessions, refresh-token hashing, revocation, and the first bidirectional ORM relationship in the codebase
 - Single index endpoint (`GET /`) proving the app runs
 
 Not yet implemented: authentication, sessions, RBAC, and all domain business logic (attendance, fees, etc.). See `PRD.md` for the full specification.
@@ -120,7 +121,7 @@ Returns a running-status message. This is a placeholder from Phase 0; real API r
 
 ## Roadmap
 
-- **Phase 1 (in progress):** `schools` model (done), `users` model (done), `user_passwords` model (done), `user_sessions` table (next), authentication (session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern, school onboarding endpoint.
+- **Phase 1 (in progress):** `schools` model (done), `users` model (done), `user_passwords` model (done), `user_sessions` model (done), authentication service layer (next - session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern, school onboarding endpoint.
 - **Phase 2:** Academic core - classes, assignments, gradebook, attendance, results.
 - **Phase 3:** Operations core - fees/payments, events, documents, messaging, notifications.
 - **Phase 4:** Admin ops - reports, scheduling, support tickets, audit logs.

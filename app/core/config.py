@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     SESSION_COOKIE_PATH: str = "/"
     SESSION_COOKIE_DOMAIN: str | None = None
     SESSION_LIFETIME_MINUTES: int = 10080  # 7 days
+    REMEMBER_ME_SESSION_LIFETIME_MINUTES: int = 43200  # 30 days
 
     # --- Database ---
     DB_HOST: str

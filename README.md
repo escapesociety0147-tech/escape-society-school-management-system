@@ -6,7 +6,7 @@ A multi-role, multi-tenant school management system. The frontend (Next.js App R
 
 **Frontend:** Fully built UI for admin, teacher, parent, and student portals. Currently backed by browser `localStorage`, not a real API.
 
-**Backend:** Phase 0 (foundation) complete. Phase 1 (core models) in progress:
+**Backend:** Phase 0 (foundation) and Phase 1 (core schema) complete. Phase 2 (authentication services) in progress:
 - Application configuration with fail-fast production validation (`app/core/config.py`)
 - SQLAlchemy engine, session, and declarative base (`app/db/`)
 - Working Docker Compose stack (FastAPI + MySQL), verified end-to-end from a clean volume
@@ -15,6 +15,8 @@ A multi-role, multi-tenant school management system. The frontend (Next.js App R
 - `User` model - migrated and tested (10 tests), with `school_id` FK, email uniqueness, role enum, and soft delete
 - `UserPassword` model - migrated and tested (7 tests), 1:1 shared-PK extension of `User`, `ON DELETE CASCADE` verified
 - `UserSession` model - migrated and tested (10 tests), supports multi-device sessions, refresh-token hashing, revocation, and the first bidirectional ORM relationship in the codebase
+- `password_service` - Argon2id hashing/verification via pwdlib, 7 unit tests (no database)
+- `token_service` - JWT access token creation/decoding via PyJWT, 9 unit tests (no database)
 - Single index endpoint (`GET /`) proving the app runs
 
 Not yet implemented: authentication, sessions, RBAC, and all domain business logic (attendance, fees, etc.). See `PRD.md` for the full specification.
@@ -121,10 +123,11 @@ Returns a running-status message. This is a placeholder from Phase 0; real API r
 
 ## Roadmap
 
-- **Phase 1 (in progress):** `schools` model (done), `users` model (done), `user_passwords` model (done), `user_sessions` model (done), authentication service layer (next - session-backed JWT in HttpOnly cookies), tenant-isolation dependency pattern, school onboarding endpoint.
-- **Phase 2:** Academic core - classes, assignments, gradebook, attendance, results.
-- **Phase 3:** Operations core - fees/payments, events, documents, messaging, notifications.
-- **Phase 4:** Admin ops - reports, scheduling, support tickets, audit logs.
+- **Phase 1 (done):** Core schema - `schools`, `users`, `user_passwords`, `user_sessions`, all migrated and tested against live MySQL.
+- **Phase 2 (in progress):** Authentication services - `password_service` (done), `token_service` (done), `session_service` (next), `auth_service`, `/auth/*` API routes, tenant-isolation dependency pattern. Note: this reorders the original roadmap - authentication was prioritized ahead of the academic-core/operations-core tables below, since it validates the schema built in Phase 1 while the design decisions are still fresh, rather than leaving security-critical tables unexercised.
+- **Phase 3:** Academic core - classes, assignments, gradebook, attendance, results.
+- **Phase 4:** Operations core - fees/payments, events, documents, messaging, notifications.
+- **Phase 5:** Admin ops - reports, scheduling, support tickets, audit logs.
 
 Full detail in `PRD.md`.
 

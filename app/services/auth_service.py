@@ -234,3 +234,48 @@ def refresh(db_session: Session, refresh_token: str) -> RefreshResult:
         access_token=access_token,
         refresh_token=new_refresh_token,
     )
+
+
+def logout(db_session: Session, refresh_token: str) -> None:
+    """Revokes the session backing a refresh token.
+
+    Raises InvalidRefreshTokenError if the token doesn't match an
+    active session - this reuses the exact same collapsed lookup
+    refresh() relies on (nonexistent/already-revoked/expired all look
+    identical), rather than introducing separate no-op handling here.
+    The operation itself is idempotent at the session-state level (a
+    revoked session stays revoked), but the supplied credential is no
+    longer valid either way, so the caller is told that plainly. Route
+    layer, not built yet, can choose to still return a success status
+    to the client on this error, since "you are logged out" is true
+    regardless - that's an HTTP-layer idempotency concern, not an
+    auth_service one.
+
+    No JWT is decoded or required here - logout operates purely on
+    the refresh token / session, matching refresh()'s security model
+    rather than trusting a client-supplied session id or access token.
+    """
+    session = session_service.get_active_session_by_refresh_token(
+        db_session, refresh_token
+    )
+
+    if session is None:
+        raise InvalidRefreshTokenError
+
+    session_service.revoke_session(db_session, session)
+
+
+def logout_all(db_session: Session, user: User) -> None:
+    """Revokes every active session belonging to a user.
+
+    Unlike login/refresh/logout, this is inherently an authenticated
+    action - "log out of every device" only makes sense once the
+    caller already knows who is asking. The route layer (not built
+    yet) will have already resolved a User via get_current_user (not
+    built yet) before calling this, so this takes the User directly
+    rather than performing a redundant second lookup by token.
+
+    Delegates entirely to session_service.revoke_all_sessions, which
+    is already idempotent (safe to call with zero active sessions).
+    """
+    session_service.revoke_all_sessions(db_session, user)

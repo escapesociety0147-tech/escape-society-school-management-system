@@ -23,6 +23,8 @@ from app.services.auth_service import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
     login,
+    logout,
+    logout_all,
     refresh,
 )
 from app.services.session_service import _utc_now, create_session, revoke_session
@@ -391,3 +393,124 @@ def test_refresh_does_not_require_a_password_row(db_session):
 
     assert result.user.id == user.id
     assert isinstance(result.access_token, str) and result.access_token
+
+
+def test_logout_revokes_session(db_session):
+    school = create_school(db_session, "SCH-AS0016")
+    user = create_user(db_session, school.id, "logoutbasic@example.com")
+    create_user_password(db_session, user.id)
+    login_result = login(db_session, "logoutbasic@example.com", VALID_PASSWORD)
+
+    logout(db_session, login_result.refresh_token)
+
+    session = db_session.scalars(
+        select(UserSession).where(UserSession.user_id == user.id)
+    ).one()
+    assert session.revoked_at is not None
+
+
+def test_logout_invalid_refresh_token_raises(db_session):
+    try:
+        logout(db_session, "not-a-real-refresh-token")
+        assert False, "expected InvalidRefreshTokenError"
+    except InvalidRefreshTokenError:
+        pass
+
+
+def test_logout_revoked_session_raises(db_session):
+    """
+    Confirms logout() is idempotent at the session-state level (the
+    session stays revoked) while still raising on the second call,
+    since the presented credential is no longer valid either way.
+    This is the design tradeoff discussed explicitly: idempotency of
+    *effect* does not imply a silent no-op *API* - that distinction
+    is deferred to the route layer, not built yet.
+    """
+    school = create_school(db_session, "SCH-AS0017")
+    user = create_user(db_session, school.id, "logouttwice@example.com")
+    create_user_password(db_session, user.id)
+    login_result = login(db_session, "logouttwice@example.com", VALID_PASSWORD)
+
+    logout(db_session, login_result.refresh_token)
+
+    try:
+        logout(db_session, login_result.refresh_token)
+        assert False, "expected InvalidRefreshTokenError on second logout"
+    except InvalidRefreshTokenError:
+        pass
+
+    # Still revoked, not un-revoked or duplicated, by the second call.
+    session = db_session.scalars(
+        select(UserSession).where(UserSession.user_id == user.id)
+    ).one()
+    assert session.revoked_at is not None
+
+
+def test_logout_expired_session_raises(db_session):
+    school = create_school(db_session, "SCH-AS0018")
+    user = create_user(db_session, school.id, "logoutexpired@example.com")
+    create_user_password(db_session, user.id)
+
+    expired_session, expired_token = create_session(db_session, user)
+    expired_session.expires_at = _utc_now() - timedelta(minutes=1)
+    db_session.commit()
+
+    try:
+        logout(db_session, expired_token)
+        assert False, "expected InvalidRefreshTokenError"
+    except InvalidRefreshTokenError:
+        pass
+
+
+def test_logout_all_revokes_every_session_for_user(db_session):
+    school = create_school(db_session, "SCH-AS0019")
+    user = create_user(db_session, school.id, "logoutall@example.com")
+    create_user_password(db_session, user.id)
+
+    # Three separate logins - three separate sessions.
+    login(db_session, "logoutall@example.com", VALID_PASSWORD)
+    login(db_session, "logoutall@example.com", VALID_PASSWORD)
+    login(db_session, "logoutall@example.com", VALID_PASSWORD)
+
+    assert _session_count(db_session, user.id) == 3
+
+    logout_all(db_session, user)
+
+    sessions = db_session.scalars(
+        select(UserSession).where(UserSession.user_id == user.id)
+    ).all()
+    assert len(sessions) == 3
+    assert all(s.revoked_at is not None for s in sessions)
+
+
+def test_logout_all_does_not_revoke_other_users_sessions(db_session):
+    school = create_school(db_session, "SCH-AS0020")
+    user_a = create_user(db_session, school.id, "logoutall-a@example.com")
+    create_user_password(db_session, user_a.id)
+    user_b = create_user(db_session, school.id, "logoutall-b@example.com")
+    create_user_password(db_session, user_b.id)
+
+    login(db_session, "logoutall-a@example.com", VALID_PASSWORD)
+    login(db_session, "logoutall-b@example.com", VALID_PASSWORD)
+
+    logout_all(db_session, user_a)
+
+    session_a = db_session.scalars(
+        select(UserSession).where(UserSession.user_id == user_a.id)
+    ).one()
+    session_b = db_session.scalars(
+        select(UserSession).where(UserSession.user_id == user_b.id)
+    ).one()
+
+    assert session_a.revoked_at is not None
+    assert session_b.revoked_at is None
+
+
+def test_logout_all_is_safe_when_user_has_no_sessions(db_session):
+    school = create_school(db_session, "SCH-AS0021")
+    user = create_user(db_session, school.id, "logoutall-empty@example.com")
+
+    # No login() call - zero sessions exist for this user.
+    logout_all(db_session, user)  # must not raise
+
+    assert _session_count(db_session, user.id) == 0

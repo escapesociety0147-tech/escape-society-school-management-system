@@ -137,6 +137,12 @@ class Settings(BaseSettings):
         return timedelta(minutes=self.SESSION_LIFETIME_MINUTES)
 
     @property
+    def remember_me_session_lifetime(self) -> timedelta:
+        """Remember-me session lifetime as a timedelta, mirroring
+        session_lifetime's ergonomics."""
+        return timedelta(minutes=self.REMEMBER_ME_SESSION_LIFETIME_MINUTES)
+
+    @property
     def access_token_expires_delta(self) -> timedelta:
         """JWT lifetime as a timedelta, mirroring session_lifetime's ergonomics."""
         return timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)

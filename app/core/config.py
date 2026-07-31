@@ -62,7 +62,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # --- Session & Cookie ---
-    SESSION_COOKIE_NAME: str = "esm_session"
+    ACCESS_TOKEN_COOKIE_NAME: str = "esm_access_token"
+    REFRESH_TOKEN_COOKIE_NAME: str = "esm_refresh_token"
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SAMESITE: SameSite = SameSite.LAX
     SESSION_COOKIE_PATH: str = "/"

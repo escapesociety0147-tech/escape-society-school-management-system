@@ -10,7 +10,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 
 
 class LoginRequest(BaseModel):
@@ -26,15 +26,27 @@ class UserResponse(BaseModel):
 
     Deliberately excludes deleted_at, created_at, updated_at, and any
     relationship data - those are persistence concerns, not API
-    concerns.
+    concerns. Built via from_user() rather than Pydantic's ORM mode -
+    an explicit translation method keeps ORM-to-API serialization in
+    one obvious place, consistent with this project's separation of
+    service-layer objects, ORM models, and HTTP concerns.
     """
-
-    model_config = {"from_attributes": True}
 
     id: UUID
     school_id: UUID
     email: EmailStr
+    name: str
     role: UserRole
+
+    @classmethod
+    def from_user(cls, user: User) -> "UserResponse":
+        return cls(
+            id=user.id,
+            school_id=user.school_id,
+            email=user.email,
+            name=user.name,
+            role=user.role,
+        )
 
 
 class LoginResponse(BaseModel):

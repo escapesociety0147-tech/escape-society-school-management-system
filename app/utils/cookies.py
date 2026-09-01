@@ -7,9 +7,12 @@ these values. Consumes app.core.config.Settings exclusively - no
 literals duplicated here.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import Response
 
 from app.core.config import get_settings
+from app.models.user_session import UserSession
 
 
 def set_auth_cookies(
@@ -17,23 +20,29 @@ def set_auth_cookies(
     *,
     access_token: str,
     refresh_token: str,
-    remember_me: bool,
+    remember_me: bool = False,
+    session: UserSession | None = None,
 ) -> None:
     """Sets both the access and refresh token cookies on a response.
 
     Access token cookie lifetime never changes with remember_me - it
     mirrors JWT expiry, intentionally short-lived regardless of
     session lifetime. Only the refresh cookie's lifetime responds to
-    remember_me, matching how session_service already treats
-    remember_me as a session-lifetime concern, never a JWT concern.
+    session expiration or remember_me.
     """
     settings = get_settings()
 
-    refresh_lifetime = (
-        settings.remember_me_session_lifetime
-        if remember_me
-        else settings.session_lifetime
-    )
+    if session is not None:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        remaining = (session.expires_at - now).total_seconds()
+        refresh_max_age = max(0, int(remaining))
+    else:
+        refresh_lifetime = (
+            settings.remember_me_session_lifetime
+            if remember_me
+            else settings.session_lifetime
+        )
+        refresh_max_age = int(refresh_lifetime.total_seconds())
 
     response.set_cookie(
         key=settings.ACCESS_TOKEN_COOKIE_NAME,
@@ -49,7 +58,7 @@ def set_auth_cookies(
     response.set_cookie(
         key=settings.REFRESH_TOKEN_COOKIE_NAME,
         value=refresh_token,
-        max_age=int(refresh_lifetime.total_seconds()),
+        max_age=refresh_max_age,
         httponly=settings.SESSION_COOKIE_HTTPONLY,
         secure=settings.cookie_secure,
         samesite=settings.SESSION_COOKIE_SAMESITE.value,

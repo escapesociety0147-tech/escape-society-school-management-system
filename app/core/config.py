@@ -62,7 +62,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # --- Session & Cookie ---
-    SESSION_COOKIE_NAME: str = "esm_session"
+    ACCESS_TOKEN_COOKIE_NAME: str = "esm_access_token"
+    REFRESH_TOKEN_COOKIE_NAME: str = "esm_refresh_token"
     SESSION_COOKIE_HTTPONLY: bool = True
     SESSION_COOKIE_SAMESITE: SameSite = SameSite.LAX
     SESSION_COOKIE_PATH: str = "/"
@@ -134,6 +135,12 @@ class Settings(BaseSettings):
     def session_lifetime(self) -> timedelta:
         """Session lifetime as a timedelta for direct use in expiry math."""
         return timedelta(minutes=self.SESSION_LIFETIME_MINUTES)
+
+    @property
+    def remember_me_session_lifetime(self) -> timedelta:
+        """Remember-me session lifetime as a timedelta, mirroring
+        session_lifetime's ergonomics."""
+        return timedelta(minutes=self.REMEMBER_ME_SESSION_LIFETIME_MINUTES)
 
     @property
     def access_token_expires_delta(self) -> timedelta:

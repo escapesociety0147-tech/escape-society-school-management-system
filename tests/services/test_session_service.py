@@ -27,36 +27,7 @@ from app.services.session_service import (
 )
 
 
-def create_school(db_session, school_code: str) -> School:
-    """Creates and commits a fully-populated, valid School."""
-    school = School(
-        school_code=school_code,
-        name=f"Test School {school_code}",
-        type="Secondary",
-        established_year=2000,
-        address="123 Test Street",
-        city="Lagos",
-        state="Lagos",
-        country="Nigeria",
-        postal_code="100001",
-        email=f"{school_code.lower()}@example.com",
-        phone="+2348000000000",
-        website="https://example.com",
-        academic_board="WAEC",
-        medium_of_instruction="English",
-        classes_offered=["Grade 1", "Grade 2"],
-    )
-    db_session.add(school)
-    db_session.commit()
-    return school
-
-
-def create_user(db_session, school_id, email: str) -> User:
-    """Creates and commits a User for session service tests to attach to."""
-    user = User(school_id=school_id, email=email, name="Test User", role=UserRole.ADMIN)
-    db_session.add(user)
-    db_session.commit()
-    return user
+from tests.factories import create_school, create_user
 
 
 def test_create_session_persists_and_returns_plaintext_token(db_session):

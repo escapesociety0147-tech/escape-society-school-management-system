@@ -32,49 +32,15 @@ from app.services.session_service import _utc_now, create_session, revoke_sessio
 VALID_PASSWORD = "correct-horse-battery-staple"
 
 
-def create_school(db_session, school_code: str) -> School:
-    """Creates and commits a fully-populated, valid School."""
-    school = School(
-        school_code=school_code,
-        name=f"Test School {school_code}",
-        type="Secondary",
-        established_year=2000,
-        address="123 Test Street",
-        city="Lagos",
-        state="Lagos",
-        country="Nigeria",
-        postal_code="100001",
-        email=f"{school_code.lower()}@example.com",
-        phone="+2348000000000",
-        website="https://example.com",
-        academic_board="WAEC",
-        medium_of_instruction="English",
-        classes_offered=["Grade 1", "Grade 2"],
+from tests.factories import create_school, create_user, create_user_password
+
+
+def _session_count(db_session, user_id) -> int:
+    return len(
+        db_session.scalars(
+            select(UserSession).where(UserSession.user_id == user_id)
+        ).all()
     )
-    db_session.add(school)
-    db_session.commit()
-    return school
-
-
-def create_user(db_session, school_id, email: str, *, deleted=False) -> User:
-    """Creates and commits a User for auth_service tests to attach to."""
-    user = User(school_id=school_id, email=email, name="Test User", role=UserRole.ADMIN)
-    if deleted:
-        user.deleted_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    db_session.add(user)
-    db_session.commit()
-    return user
-
-
-def create_user_password(db_session, user_id, *, password: str = VALID_PASSWORD) -> UserPassword:
-    """Creates and commits a UserPassword row with a real Argon2id hash."""
-    user_password = UserPassword(
-        user_id=user_id,
-        password_hash=password_service.hash_password(password),
-    )
-    db_session.add(user_password)
-    db_session.commit()
-    return user_password
 
 
 def _session_count(db_session, user_id) -> int:

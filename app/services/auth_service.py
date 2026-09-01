@@ -1,4 +1,4 @@
-﻿"""Authentication orchestration service.
+"""Authentication orchestration service.
 
 This module is the ONLY place password_service, token_service, and
 session_service are composed together. It owns login/logout/refresh
@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.user_password import UserPassword
+from app.models.user_session import UserSession
 from app.services import password_service, session_service, token_service
 
 # TODO(confirm): precomputed Argon2id hash of a fixed dummy password,
@@ -55,6 +56,7 @@ class LoginResult:
     user: User
     access_token: str
     refresh_token: str
+    session: UserSession
 
 
 def _normalize_email(email: str) -> str:
@@ -155,6 +157,7 @@ def login(
         user=user,
         access_token=access_token,
         refresh_token=refresh_token,
+        session=session,
     )
 
 
@@ -172,6 +175,7 @@ class RefreshResult:
     user: User
     access_token: str
     refresh_token: str
+    session: UserSession
 
 
 class InvalidRefreshTokenError(Exception):
@@ -233,6 +237,7 @@ def refresh(db_session: Session, refresh_token: str) -> RefreshResult:
         user=user,
         access_token=access_token,
         refresh_token=new_refresh_token,
+        session=session,
     )
 
 
